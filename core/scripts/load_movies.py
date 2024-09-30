@@ -1,53 +1,78 @@
 import pandas as pd
-import langcodes
+import requests
+import os
 
-from movies.models import Language, Genre, Company, Country, Human, Movie
+from movies.models import Language, Genre, Company, Country, Person, Movie
 
 def process_objects(objs, model):
     result = []
 
-    if type(objs) != str:
+    if not objs:
         return result
 
-    for obj in objs.split(','):
-        obj = obj.strip().title()
-        obj, _ = model.objects.get_or_create(name=obj)
+    for obj in objs:
+        name = obj["name"].strip().title()
+        obj, _ = model.objects.get_or_create(name=name)
         result.append(obj)
 
     return result
 
-def lang_code_to_name(lang):
-    if not lang or lang.lower() == "no language":
-        return "—"
+def process_persons(objs, job=None):
+    result = []
+
+    if not objs:
+        return result
     
-    return langcodes.Language.get(lang).autonym().title()
+    for obj in objs:
+        if job and (obj["job"].lower() not in job):
+            continue
+        name = obj["name"].strip().title()
+        tmdb_id = obj["id"]
+        profile_path = obj.get("profile_path")
+        obj, created = Person.objects.get_or_create(tmdb_id=tmdb_id, name=name)
+        if created and profile_path:
+            obj.profile_path = profile_path
+            obj.save()
+        result.append(obj)
+
+    return result
+
+def get_default_if_none(data, field, model):
+    value = data.get(field)
+    return value if value else model._meta.get_field(field).get_default()
 
 def run():
-    movies = pd.read_csv('movies.csv')
-    
-    Language.objects.all().delete()
-    Genre.objects.all().delete()
-    Company.objects.all().delete()
-    Country.objects.all().delete()
-    Human.objects.all().delete()
-    Movie.objects.all().delete()
+    movies = pd.read_csv("movies.csv")
 
-    for _, movie in movies.where(pd.notnull(movies), None).iterrows():
-        title = movie.title
-        orig_title = movie.original_title
-        status = movie.status
-        revenue = movie.revenue
-        budget = movie.budget
-        runtime = movie.runtime
-        tagline = movie.tagline
-        overview = movie.overview
-        tmdb_id = movie.id
-        imdb_id = movie.imdb_id
-        release_date = movie.release_date
-        
-        orig_lang, _ = Language.objects.get_or_create(
-            name=lang_code_to_name(movie.original_language)
-        )
+    for _, movie in movies.iterrows():
+        tmdb_id = movie.tmdbId
+
+        if Movie.objects.filter(tmdb_id=tmdb_id).exists():
+            continue
+
+        movie_data = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={os.getenv('TMDB_KEY')}&language=en-US").json()
+        if not movie_data.get('success', True):
+            continue
+
+        credit_data = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={os.getenv('TMDB_KEY')}&language=en-US").json()
+        cast_data = credit_data.get('cast')
+        crew_data = credit_data.get('crew')
+
+        title = movie_data["title"]
+        orig_title = movie_data["original_title"]
+        status = movie_data["status"]
+        release_date = movie_data.get("release_date")
+        runtime = movie_data.get("runtime")
+
+        if status == "Released" and not release_date:
+            continue
+
+        revenue = get_default_if_none(movie_data, "revenue", Movie)
+        budget = get_default_if_none(movie_data, "budget", Movie)
+        tagline = get_default_if_none(movie_data, "tagline", Movie)
+        overview = get_default_if_none(movie_data, "overview", Movie)
+        poster_path = get_default_if_none(movie_data, "poster_path", Movie)
+        backdrop_path = get_default_if_none(movie_data, "backdrop_path", Movie)
 
         m = Movie(
             title=title,
@@ -57,35 +82,36 @@ def run():
             revenue=revenue,
             budget=budget,
             runtime=runtime,
-            orig_lang=orig_lang,
             tagline=tagline,
             overview=overview,
             tmdb_id=tmdb_id,
-            imdb_id=imdb_id,
+            poster_path=poster_path,
+            backdrop_path=backdrop_path,
         )
         m.save()
 
-        spoken_langs = process_objects(movie.spoken_languages, Language)
-        genres = process_objects(movie.genres, Genre)
-        prod_companies = process_objects(movie.production_companies, Company)
-        prod_countries = process_objects(movie.production_countries, Country)
-        cast = process_objects(movie.cast, Human)
-        directors = process_objects(movie.director, Human)
-        dop = process_objects(movie.director_of_photography, Human)
-        writers = process_objects(movie.writers, Human)
-        producers = process_objects(movie.producers, Human)
-        composers = process_objects(movie.music_composer, Human)
+        spoken_langs = process_objects(movie_data.get("spoken_languages"), Language)
+        genres = process_objects(movie_data.get("genres"), Genre)
+        prod_companies = process_objects(movie_data.get("production_companies"), Company)
+        prod_countries = process_objects(movie_data.get("production_countries"), Country)
+
+        cast = process_persons(cast_data)
+        director = process_persons(crew_data, ["director", "co-director"])
+        cinematographer = process_persons(crew_data, ["director of photography"])
+        writer = process_persons(crew_data, ["screenplay", "novel"])
+        producer = process_persons(crew_data, ["producer", "associate producer", "executive producer"])
+        composer = process_persons(crew_data, ["original music composer"])
 
         m.spoken_langs.add(*spoken_langs)
         m.genres.add(*genres)
         m.prod_companies.add(*prod_companies)
         m.prod_countries.add(*prod_countries)
         m.cast.add(*cast)
-        m.directors.add(*directors)
-        m.dop.add(*dop)
-        m.writers.add(*writers)
-        m.producers.add(*producers)
-        m.composers.add(*composers)
+        m.director.add(*director)
+        m.cinematographer.add(*cinematographer)
+        m.writer.add(*writer)
+        m.producer.add(*producer)
+        m.composer.add(*composer)
 
 
 

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load app_tags %}
+{% load static %}
+
+{% block content %}
+<div class="row row-cols-auto g-3 ">
+    {% for movie in page_obj %}
+    <div class="col">
+      <div class="card h-100 rounded-0" style="width: 180px;">
+        <img 
+        {% if movie.poster_path %}
+            src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
+            srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
+        {% else %}
+            src="{% static 'card_img_placeholder.png' %}" 
+        {% endif %}
+            class="card-img-top rounded-0" 
+            alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
+        />
+        <div class="card-body">
+          <h5 class="card-title">{{ movie.title }}</h5>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+</div>
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+        {% endif %}
+    </span>
+</div>
+{% endblock %}

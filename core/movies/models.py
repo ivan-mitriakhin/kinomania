@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -30,8 +32,10 @@ class Country(models.Model):
     def __str__(self):
         return self.name
 
-class Human(models.Model):
+class Person(models.Model):
+    tmdb_id = models.IntegerField(unique=True)
     name = models.CharField(max_length=50)
+    profile_path = models.CharField(max_length=32, blank=True, default="")
     def __str__(self):
         return self.name
 
@@ -45,29 +49,41 @@ class Movie(models.Model):
     budget = models.PositiveIntegerField(blank=True, default=0)
 
     runtime = models.PositiveSmallIntegerField(null=True, blank=True)
-    orig_lang = models.ForeignKey(Language, on_delete=models.CASCADE, related_name="orig_lang")
-    spoken_langs = models.ManyToManyField(Language, related_name="spoken_langs")
+    spoken_langs = models.ManyToManyField(Language)
 
-    tagline = models.CharField(max_length=100, null=True, blank=True, default="")
-    overview = models.TextField(null=True, blank=True, default="")
+    tagline = models.CharField(max_length=100, blank=True, default="")
+    overview = models.TextField(blank=True, default="")
 
     genres = models.ManyToManyField(Genre)
 
-    prod_companies = models.ManyToManyField(Company, related_name="prod_companies")
-    prod_countries = models.ManyToManyField(Country, related_name="prod_countries")
+    prod_companies = models.ManyToManyField(Company)
+    prod_countries = models.ManyToManyField(Country)
 
-    cast = models.ManyToManyField(Human, related_name="cast")
-    directors = models.ManyToManyField(Human, related_name="directors")
-    dop = models.ManyToManyField(Human, related_name="dop")
-    writers = models.ManyToManyField(Human, related_name="writers")
-    producers = models.ManyToManyField(Human, related_name="producers")
-    composers = models.ManyToManyField(Human, related_name="composers")
+    cast = models.ManyToManyField(Person, related_name="cast")
+    director = models.ManyToManyField(Person, related_name="director")
+    cinematographer = models.ManyToManyField(Person, related_name="cinematographer")
+    writer = models.ManyToManyField(Person, related_name="writer")
+    producer = models.ManyToManyField(Person, related_name="producer")
+    composer = models.ManyToManyField(Person, related_name="composer")
+
+    poster_path = models.CharField(max_length=32, blank=True, default="")
+    backdrop_path = models.CharField(max_length=32, blank=True, default="")
 
     tmdb_id = models.IntegerField(unique=True)
-    imdb_id = models.CharField(max_length=10, unique=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
+    
+class Rating(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
+    value = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.owner.username} : {self.value / 2}"
