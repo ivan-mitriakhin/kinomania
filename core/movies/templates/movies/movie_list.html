@@ -1,12 +1,11 @@
 {% extends "base.html" %}
-{% load app_tags %}
 {% load static %}
 
 {% block content %}
-<div class="row row-cols-auto g-3 ">
+<div class="row row-cols-auto g-3">
     {% for movie in page_obj %}
     <div class="col">
-      <div class="card h-100 rounded-0" style="width: 180px;">
+      <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
         <img 
         {% if movie.poster_path %}
             src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
@@ -17,8 +16,11 @@
             class="card-img-top rounded-0" 
             alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
         />
-        <div class="card-body">
-          <h5 class="card-title">{{ movie.title }}</h5>
+        <div class="position-absolute bottom-0 bg-white w-100">
+          <div class="fs-6 m-2" style="line-height: 19px;">
+            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></p>
+            <i class="bi bi-star-fill"> {{ movie.avg_ratings }}</i>
+          </div>
         </div>
       </div>
     </div>

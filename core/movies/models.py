@@ -74,12 +74,18 @@ class Movie(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def avg_ratings(self):
+        return round(self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2, 1)
+    
+    def cnt_ratings(self):
+        return round(self.ratings.count())
+
     def __str__(self):
         return self.title
     
 class Rating(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="ratings")
     value = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
 
     created_at = models.DateTimeField(auto_now_add=True)

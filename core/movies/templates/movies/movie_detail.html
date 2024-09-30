@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="row g-0">
+        <div class="col-md-4">
+            <img 
+            src="https://image.tmdb.org/t/p/original{{ movie.backdrop_path }}"
+            class="img-fluid rounded-start" 
+            alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
+            />
+        </div>
+        <div class="col-md-8">
+            <div class="card-body">
+                <h1 class="card-title">{{ movie.title }} ({{ movie.release_date.year }})</h1>
+                <div class="post">
+                <i class="bi bi-star"></i>
+                <i class="bi bi-star"></i>
+                <i class="bi bi-star"></i>
+                <i class="bi bi-star"></i>
+                <i class="bi bi-star"></i>
+                <i class="bi bi-pin m-5"></i>
+                </div>
+                <p class="card-text mt-4">Average of {{ movie.cnt_ratings }} ratings: {{ movie.avg_ratings }}</p>
+                <p class="card-text mt-4">Genres: 
+                {% for genre in movie.genres.all %}
+                    {{ genre.name }}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+                </p>
+                <p class="card-text float-end">
+                <a href="https://www.themoviedb.org/movie/{{ movie.tmdb_id }}">IMDB Link</a>
+                </p>
+            </div>
+        </div>        
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <p><small class="text-muted">Release</small><span class="float-end">{{ movie.release_date }}</span></p>
+        <p>
+            <small class="text-muted">Countries</small>
+            <span class="float-end">
+            {% for country in movie.prod_countries.all %}
+                {{ country.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p><small class="text-muted">Tagline</small><span class="float-end">{{ movie.tagline }}</span></p>
+        <p>
+            <small class="text-muted">Director</small>
+            <span class="float-end">
+            {% for director in movie.director.all %}
+                {{ director.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p>
+            <small class="text-muted">Writer</small>
+            <span class="float-end">
+            {% for writer in movie.writer.all %}
+                {{ writer.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p>
+            <small class="text-muted">Producer</small>
+            <span class="float-end">
+            {% for producer in movie.producer.all %}
+                {{ producer.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p>
+            <small class="text-muted">Cinematographer</small>
+            <span class="float-end">
+            {% for cinematographer in movie.cinematographer.all %}
+                {{ cinematographer.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p>
+            <small class="text-muted">Composer</small>
+            <span class="float-end">
+            {% for composer in movie.composer.all %}
+                {{ composer.name }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            </span>
+        </p>
+        <p><small class="text-muted">Budget</small><span class="float-end">${{ movie.budget|intcomma }}</span></p>
+        <p><small class="text-muted">Revenue</small><span class="float-end">${{ movie.revenue|intcomma }}</span></p>
+        <p><small class="text-muted">Runtime</small><span class="float-end">{{ movie.runtime }} minutes</span></p>
+    </div>
+    <div class="col-md-6">
+        <p class="fs-4 text-center">{{ movie.overview }}</p>
+    </div>
+</div>
+{% endblock %}
