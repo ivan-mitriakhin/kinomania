@@ -1,6 +1,11 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.auth.models import User
+
+import numpy as np
+from scipy.sparse import load_npz
+from sklearn.neighbors import NearestNeighbors
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -79,6 +84,40 @@ class Movie(models.Model):
     
     def cnt_ratings(self):
         return round(self.ratings.count())
+    
+    def similar_movies(self, k=16, metric='cosine'):
+        """
+        Finds k-nearest neighbours for a given movie id.
+
+        Args:
+            movie_id: id of the movie of interest
+            X: user-item utility matrix
+            k: number of similar movies to retrieve
+            metric: distance metric for kNN calculations
+
+        Output: returns list of k similar movies
+        """
+
+        X = load_npz("data/X.npz")
+        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
+        movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
+
+        X = X.T
+        neighbour_ids = []
+
+        movie_ind = movie_mapper[self.id]
+        movie_vec = X[movie_ind]
+        if isinstance(movie_vec, (np.ndarray)):
+            movie_vec = movie_vec.reshape(1,-1)
+
+        kNN = NearestNeighbors(n_neighbors=k+1, algorithm="brute", metric=metric)
+        kNN.fit(X)
+        neighbour = kNN.kneighbors(movie_vec, return_distance=False)
+        neighbour_ids = [movie_inv_mapper[n] for n in neighbour[0]]
+        neighbour_ids.pop(0)
+        result = [Movie.objects.get(id=i) for i in neighbour_ids]
+        return result
+    
 
     def __str__(self):
         return self.title
@@ -90,6 +129,7 @@ class Rating(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
