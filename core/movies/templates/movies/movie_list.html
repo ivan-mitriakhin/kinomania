@@ -2,11 +2,23 @@
 {% load static %}
 
 {% block content %}
+{% if browse %}
+<h2>Browsing by {{ browse }}</h2>
+{% endif %}
+{% if recent_releases %}
+<small class="text-muted">Movies released in last 3600 days</small>
+<h2>{{ recent_releases }}</h2>
+{% endif %}
+{% if recently_added %}
+<small class="text-muted">The movies most recently added to Kinomania</small>
+<h2>{{ necently_added }}</h2>
+{% endif %}
 <div class="row row-cols-auto g-3">
     {% for movie in page_obj %}
     <div class="col">
       <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
-        <img 
+        <img
+            loading="lazy" 
         {% if movie.poster_path %}
             src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
             srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
@@ -19,7 +31,13 @@
         <div class="position-absolute bottom-0 bg-white w-100">
           <div class="fs-6 m-2" style="line-height: 19px;">
             <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></p>
-            <i class="bi bi-star-fill"> {{ movie.avg_ratings }}</i>
+            <i class="bi bi-star-fill fst-normal"> 
+                {% if movie.avg_ratings %}
+                {{ movie.avg_ratings }}
+                {% else %}
+                Not rated
+                {% endif %}
+            </i>
           </div>
         </div>
       </div>

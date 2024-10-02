@@ -116,7 +116,8 @@
 {% for movie in movie.similar_movies %}
     <div class="col">
         <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
-        <img 
+        <img
+            loading="lazy"
         {% if movie.poster_path %}
             src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
             srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
@@ -128,7 +129,7 @@
         />
         <div class="position-absolute bottom-0 bg-white w-100">
             <div class="fs-6 m-2" style="line-height: 19px;">
-            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} loading="lazy" class="text-decoration-none">{{ movie.title }}</a></p>
+            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></p>
             <i class="bi bi-star-fill"> {{ movie.avg_ratings }}</i>
             </div>
         </div>

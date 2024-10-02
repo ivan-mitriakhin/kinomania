@@ -24,6 +24,8 @@ class Language(models.Model):
 
 class Genre(models.Model):
     name = models.CharField(max_length=50)
+    def movie_count(self):
+        return self.movie_set.count()
     def __str__(self):
         return self.name
 
@@ -80,24 +82,14 @@ class Movie(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def avg_ratings(self):
+        if self.ratings.count() == 0:
+            return None
         return round(self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2, 1)
     
     def cnt_ratings(self):
         return round(self.ratings.count())
     
     def similar_movies(self, k=16, metric='cosine'):
-        """
-        Finds k-nearest neighbours for a given movie id.
-
-        Args:
-            movie_id: id of the movie of interest
-            X: user-item utility matrix
-            k: number of similar movies to retrieve
-            metric: distance metric for kNN calculations
-
-        Output: returns list of k similar movies
-        """
-
         X = load_npz("data/X.npz")
         movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
         movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
@@ -129,7 +121,6 @@ class Rating(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
