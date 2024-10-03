@@ -115,9 +115,9 @@ class Movie(models.Model):
         return self.title
     
 class Rating(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ratings")
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="ratings")
-    value = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
+    value = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)], default=1)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

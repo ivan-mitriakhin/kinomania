@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load humanize %}
+{% load app_tags %}
 
 {% block content %}
 <div class="card mb-3 rounded-0">
@@ -8,7 +9,7 @@
         <div class="col-md-4">
             <img 
             src="https://image.tmdb.org/t/p/original{{ movie.backdrop_path }}"
-            class="img-fluid" 
+            class="img-fluid h-100" 
             alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
             />
         </div>
@@ -17,15 +18,23 @@
                 <h1 class="card-title">
                     {{ movie.title }} ({{ movie.release_date.year }})
                 </h1>
-                <p class="card-text">
-                    <i class="bi bi-star"></i>
-                    <i class="bi bi-star"></i>
-                    <i class="bi bi-star"></i>
-                    <i class="bi bi-star"></i>
-                    <i class="bi bi-star"></i>
-                    <i class="bi bi-pin m-5"></i>
-                </p>
-                <p class="card-text">
+                {% if user.is_authenticated %}
+                <form action={% url 'rating_add' movie.id %} method="post" id="rating-form">
+                    {% csrf_token %}
+                    <fieldset class="rating">
+                        {% for i in 10|rev_range:0 %}
+                        <input type="radio" 
+                            onchange="formSubmit(this)" 
+                            id="star{{ i }}" name="rating" 
+                            value="{{ i }}"
+                            {% if user_rating == i %}checked{% endif %}/>
+                        <label class ={% if i|divisibleby:2 %}"full"{% else %}"half"{% endif %} for="star{{ i }}"></label>
+                        {% endfor %}
+                    </fieldset>
+                </form>
+                {% endif %}
+                <p class="card-text">&#8205;</p>
+                <p class="card-text pt-1">
                     <span class="badge rounded-pill bg-dark fs-6">
                         {{ movie.avg_ratings }}
                     </span>
@@ -137,4 +146,11 @@
     </div>
 {% endfor %}
 </div>
+<script>
+    function formSubmit(radioObj){
+      if(radioObj.checked){
+        document.getElementById("rating-form").submit();
+      }
+    }
+</script>
 {% endblock %}

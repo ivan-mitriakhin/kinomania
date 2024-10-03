@@ -1,11 +1,14 @@
+from django.http import HttpResponse
+from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView, DetailView
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
 
 from datetime import datetime, timedelta
 
-from movies.models import Movie, Genre
+from movies.models import Movie, Genre, Rating
 
 LIST_PAGINATE_BY = 24
 
@@ -18,6 +21,13 @@ class MovieListView(ListView):
 class MovieDetailView(DetailView):
     model = Movie
     template_name = "movies/movie_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated and Rating.objects.filter(movie=context["movie"], owner=self.request.user).exists():
+            value = Rating.objects.get(movie=context["movie"], owner=self.request.user).value
+            context["user_rating"] = value
+        return context
 
 class GenreListView(ListView):
     template_name = "movies/genre_List.html"
@@ -62,3 +72,13 @@ class RecentlyAddedListView(ListView):
         context = super().get_context_data(**kwargs)
         context["recently_added"] = "New additions"
         return context
+    
+class RatingAddView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        value = int(request.POST['rating'])
+        movie = Movie.objects.get(pk=pk)
+        owner = request.user
+        r, _ = Rating.objects.get_or_create(movie=movie, owner=owner)
+        r.value = value
+        r.save()
+        return redirect(reverse('movie_detail', args=[pk]))
