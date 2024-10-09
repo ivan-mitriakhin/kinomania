@@ -32,6 +32,12 @@
                         {% endfor %}
                     </fieldset>
                 </form>
+                <form action={% url 'rating_delete' movie.id %} method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-dark">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                </form>
                 {% endif %}
                 <p class="card-text">&#8205;</p>
                 <p class="card-text pt-1">

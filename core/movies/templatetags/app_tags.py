@@ -1,5 +1,7 @@
 from django import template
 
+from movies.models import Movie
+
 register = template.Library()
 
 @register.filter(name='range')

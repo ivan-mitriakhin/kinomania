@@ -1,0 +1,8 @@
+<ul class="list-group">
+{% for movie in movies|slice:":5" %}
+<li class="list-group-item"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></li>
+{% endfor %}
+{% if movies.count > 5 %}
+<li class="list-group-item"><button class="btn btn-outline-success" type="submit">More</button></li>
+{% endif %}
+</ul>

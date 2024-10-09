@@ -2,9 +2,9 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView, DetailView
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count
+from django.db.models import Avg, Count
 
 from datetime import datetime, timedelta
 
@@ -12,11 +12,36 @@ from movies.models import Movie, Genre, Rating
 
 LIST_PAGINATE_BY = 24
 
+"""
+MOVIE
+"""
+
 class MovieListView(ListView):
-    model = Movie
     paginate_by = LIST_PAGINATE_BY
     template_name = "movies/movie_list.html"
-    ordering = ["id"]
+
+    def get_queryset(self):
+        search = self.request.GET.get("search")
+        ordering = self.request.GET.get("ordering", "count")
+        queryset = None
+        if search:
+            queryset = Movie.objects.filter(title__icontains=search)
+        else:
+            queryset = Movie.objects.all()
+
+        if ordering == "count":
+            return queryset.annotate(count_ratings=Count("ratings")).order_by("-count_ratings")
+        else:
+            return queryset.order_by("-" + ordering)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        search = self.request.GET.get("search")
+        if search:
+            context["header"] = {"side": "you searched for titles like", "main": search}
+        else:
+            context["header"] = {"side": " ", "main": "all movies"}
+        return context
 
 class MovieDetailView(DetailView):
     model = Movie
@@ -29,13 +54,6 @@ class MovieDetailView(DetailView):
             context["user_rating"] = value
         return context
 
-class GenreListView(ListView):
-    template_name = "movies/genre_List.html"
-    context_object_name = 'genre_list'
-    
-    def get_queryset(self):
-        return Genre.objects.annotate(count=Count('movie')).order_by('-count')
-
 class MoviesByGenreListView(ListView):
     paginate_by = LIST_PAGINATE_BY
     template_name = "movies/movie_list.html"
@@ -46,7 +64,7 @@ class MoviesByGenreListView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["browse"] = self.kwargs["genre"]
+        context["header"] = {"side": "browse by", "main": self.kwargs["genre"]}
         return context
 
 class RecentReleasesListView(ListView):
@@ -58,7 +76,7 @@ class RecentReleasesListView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["recent_releases"] = "Recent releases"
+        context["header"] = {"side": "movies released in last 3600 days", "main": "recent releases"}
         return context
     
 class RecentlyAddedListView(ListView):
@@ -70,8 +88,20 @@ class RecentlyAddedListView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["recently_added"] = "New additions"
+        context["header"] = {"side": "movies recently added", "main": "new additions"}
         return context
+    
+def search_results_view(request):
+    query = request.GET.get('search', '')
+    movies = []
+    if query:
+        movies = Movie.objects.filter(title__icontains=query)
+    context = {'movies': movies}
+    return render(request, 'movies/search_results.html', context)
+    
+"""
+RATING
+"""
     
 class RatingAddView(LoginRequiredMixin, View):
     def post(self, request, pk):
@@ -82,3 +112,22 @@ class RatingAddView(LoginRequiredMixin, View):
         r.value = value
         r.save()
         return redirect(reverse('movie_detail', args=[pk]))
+    
+class RatingDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        movie = Movie.objects.get(pk=pk)
+        owner = request.user
+        r = Rating.objects.get(movie=movie, owner=owner)
+        r.delete()
+        return redirect(reverse('movie_detail', args=[pk]))
+    
+"""
+GENRE
+"""
+
+class GenreListView(ListView):
+    template_name = "movies/genre_list.html"
+    context_object_name = 'genre_list'
+    
+    def get_queryset(self):
+        return Genre.objects.annotate(count=Count('movie')).order_by('-count')
