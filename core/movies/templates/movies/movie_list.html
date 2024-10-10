@@ -11,9 +11,10 @@
     </div>
     <div class="dropdown">
         <span>sort by: </span>
-        <form action={% url 'movie_list' %} method="get" role="ordering">
+        <form action="{{ request.get_path }}" method="get" role="ordering">
             <select name="ordering" class="form-select form-select-sm mb-2" aria-label="Sort by" onchange="this.form.submit()">
-                <option value="count" {% if request.GET.ordering == "count" %}selected{% endif %}># ratings</option>
+                <option value="ratings_count" {% if request.GET.ordering == "ratings_count" %}selected{% endif %}># ratings</option>
+                <option value="ratings_average" {% if request.GET.ordering == "ratings_average" %}selected{% endif %}>ratings average</option>
                 <option value="release_date" {% if request.GET.ordering == "release_date" %}selected{% endif %}>release date</option>
                 <option value="created_at" {% if request.GET.ordering == "created_at" %}selected{% endif %}>date added to the site</option>
                 <option value="title" {% if request.GET.ordering == "title" %}selected{% endif %}>alphabetical order (title)</option>
@@ -40,8 +41,8 @@
           <div class="fs-6 m-2" style="line-height: 19px;">
             <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none text-muted">{{ movie.title }}</a></p>
             <i class="bi bi-star-fill fst-normal"> 
-                {% if movie.avg_ratings %}
-                {{ movie.avg_ratings }}
+                {% if movie.ratings_average %}
+                {{ movie.ratings_average }}
                 {% else %}
                 Not rated
                 {% endif %}
@@ -55,8 +56,8 @@
 <div class="pagination">
     <span class="step-links">
         {% if page_obj.has_previous %}
-            <a href="?page=1">&laquo; first</a>
-            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+            <a href="?page=1&search={{request.GET.search}}&ordering={{request.GET.ordering}}">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">previous</a>
         {% endif %}
 
         <span class="current">
@@ -64,8 +65,8 @@
         </span>
 
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}">next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+            <a href="?page={{ page_obj.next_page_number }}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">last &raquo;</a>
         {% endif %}
     </span>
 </div>

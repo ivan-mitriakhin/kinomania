@@ -22,17 +22,14 @@ class MovieListView(ListView):
 
     def get_queryset(self):
         search = self.request.GET.get("search")
-        ordering = self.request.GET.get("ordering", "count")
+        ordering = self.request.GET.get("ordering", "ratings_count")
         queryset = None
         if search:
             queryset = Movie.objects.filter(title__icontains=search)
         else:
             queryset = Movie.objects.all()
 
-        if ordering == "count":
-            return queryset.annotate(count_ratings=Count("ratings")).order_by("-count_ratings")
-        else:
-            return queryset.order_by("-" + ordering)
+        return queryset.order_by("-" + ordering)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

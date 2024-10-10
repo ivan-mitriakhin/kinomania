@@ -81,14 +81,14 @@ class Movie(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def avg_ratings(self):
-        if self.ratings.count() == 0:
-            return None
-        return round(self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2, 1)
-    
-    def cnt_ratings(self):
-        return round(self.ratings.count())
-    
+    ratings_average = models.FloatField(blank=True, null=True, default=0)
+    ratings_count = models.IntegerField(blank=True, default=0)
+
+    def update_ratings_info(self):
+        self.ratings_average = round(self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2, 1) if self.ratings.count() > 0 else None
+        self.ratings_count = self.ratings.count()
+        self.save(update_fields=['ratings_average', 'ratings_count'])
+
     def similar_movies(self, k=16, metric='cosine'):
         X = load_npz("data/X.npz")
         movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
@@ -110,7 +110,6 @@ class Movie(models.Model):
         result = [Movie.objects.get(id=i) for i in neighbour_ids]
         return result
     
-
     def __str__(self):
         return self.title
     
@@ -121,6 +120,14 @@ class Rating(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, **kwargs):
+        super().save(**kwargs)
+        self.movie.update_ratings_info()
+
+    def delete(self, **kwargs):
+        super().delete(**kwargs)
+        self.movie.update_ratings_info()
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"

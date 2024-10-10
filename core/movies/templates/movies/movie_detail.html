@@ -42,10 +42,10 @@
                 <p class="card-text">&#8205;</p>
                 <p class="card-text pt-1">
                     <span class="badge rounded-pill bg-dark fs-6">
-                        {{ movie.avg_ratings }}
+                        {{ movie.ratings_average }}
                     </span>
                     <small class="fw-lighter">
-                        Average of {{ movie.cnt_ratings }} ratings
+                        Average of {{ movie.ratings_count }} ratings
                     </small>
                 </p>
                 <p class="card-text">
@@ -145,7 +145,7 @@
         <div class="position-absolute bottom-0 bg-white w-100">
             <div class="fs-6 m-2" style="line-height: 19px;">
             <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></p>
-            <i class="bi bi-star-fill"> {{ movie.avg_ratings }}</i>
+            <i class="bi bi-star-fill"> {{ movie.ratings_average }}</i>
             </div>
         </div>
         </div>
