@@ -23,21 +23,34 @@ class MovieListView(ListView):
     def get_queryset(self):
         search = self.request.GET.get("search")
         ordering = self.request.GET.get("ordering", "ratings_count")
+        if not ordering:
+            ordering = "ratings_count"
+        genre = self.request.GET.get("genre")
         queryset = None
+
         if search:
             queryset = Movie.objects.filter(title__icontains=search)
         else:
             queryset = Movie.objects.all()
 
+        if genre:
+            queryset = Movie.objects.filter(genres__in=[Genre.objects.get(name__iexact=genre)])
+        
         return queryset.order_by("-" + ordering)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         search = self.request.GET.get("search")
+        genre = self.request.GET.get("genre")
+
         if search:
             context["header"] = {"side": "you searched for titles like", "main": search}
         else:
             context["header"] = {"side": " ", "main": "all movies"}
+
+        if genre:
+            context["header"] = {"side": "browse by", "main": genre}
+
         return context
 
 class MovieDetailView(DetailView):
@@ -49,19 +62,6 @@ class MovieDetailView(DetailView):
         if self.request.user.is_authenticated and Rating.objects.filter(movie=context["movie"], owner=self.request.user).exists():
             value = Rating.objects.get(movie=context["movie"], owner=self.request.user).value
             context["user_rating"] = value
-        return context
-
-class MoviesByGenreListView(ListView):
-    paginate_by = LIST_PAGINATE_BY
-    template_name = "movies/movie_list.html"
-
-    def get_queryset(self):
-        self.genre = get_object_or_404(Genre, name__iexact=self.kwargs["genre"])
-        return self.genre.movie_set.all()
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["header"] = {"side": "browse by", "main": self.kwargs["genre"]}
         return context
 
 class RecentReleasesListView(ListView):

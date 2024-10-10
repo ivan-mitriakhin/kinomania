@@ -5,7 +5,7 @@
     <li class="list-group-item fw-bold">Genre (# Movies)</li>
     {% for genre in genre_list %}
         <li class="list-group-item">
-            <a href={% url 'movies_by_genre' genre.name %}>{{ genre.name }}</a> ({{ genre.movie_count }})
+            <a href="{% url 'movie_list' %}?genre={{ genre.name }}">{{ genre.name }}</a> ({{ genre.movie_count }})
         </li>
     {% endfor %}
 {% endblock %}

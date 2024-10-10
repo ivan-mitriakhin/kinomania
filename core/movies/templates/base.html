@@ -41,11 +41,11 @@
                     </li>
                     <li>
                       <h6 class="dropdown-header fw-bold">GENRES</h6>
-                      <a class="dropdown-item" href={% url 'movies_by_genre' genre="drama" %}>Drama</a>
-                      <a class="dropdown-item" href={% url 'movies_by_genre' genre="comedy" %}>Comedy</a>
-                      <a class="dropdown-item" href={% url 'movies_by_genre' genre="romance" %}>Romance</a>
-                      <a class="dropdown-item" href={% url 'movies_by_genre' genre="crime" %}>Crime</a>
-                      <a class="dropdown-item" href={% url 'movies_by_genre' genre="horror" %}>Horror</a>
+                      <a class="dropdown-item" href="{% url 'movie_list' %}?genre=drama">Drama</a>
+                      <a class="dropdown-item" href="{% url 'movie_list' %}?genre=comedy">Comedy</a>
+                      <a class="dropdown-item" href="{% url 'movie_list' %}?genre=romance">Romance</a>
+                      <a class="dropdown-item" href="{% url 'movie_list' %}?genre=crime">Crime</a>
+                      <a class="dropdown-item" href="{% url 'movie_list' %}?genre=horror">Horror</a>
                       <a class="dropdown-item" href={% url 'genre_list' %}>More genres...</a>
                     </li>
                   </div>

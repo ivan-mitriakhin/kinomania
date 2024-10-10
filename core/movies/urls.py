@@ -9,7 +9,6 @@ urlpatterns = [
     path('explore/', views.MovieListView.as_view(), name="movie_list"),
     path('explore/results/', views.search_results_view, name="search_results"),
     path('explore/genres', views.GenreListView.as_view(), name="genre_list"),
-    path('explore/genres/<str:genre>', views.MoviesByGenreListView.as_view(), name="movies_by_genre"),
     path('explore/recent-releases', views.RecentReleasesListView.as_view(), name="recent_releases"),
     path('explore/recently-added', views.RecentlyAddedListView.as_view(), name="recently_added"),
 ]
