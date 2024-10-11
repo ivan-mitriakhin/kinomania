@@ -144,7 +144,7 @@
         />
         <div class="position-absolute bottom-0 bg-white w-100">
             <div class="fs-6 m-2" style="line-height: 19px;">
-            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></p>
+            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none text-muted">{{ movie.title }}</a></p>
             <i class="bi bi-star-fill"> {{ movie.ratings_average }}</i>
             </div>
         </div>

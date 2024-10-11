@@ -1,8 +1,7 @@
-from django.http import HttpResponse
 from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView, DetailView
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count
 
@@ -34,7 +33,7 @@ class MovieListView(ListView):
             queryset = Movie.objects.all()
 
         if genre:
-            queryset = Movie.objects.filter(genres__in=[Genre.objects.get(name__iexact=genre)])
+            queryset = queryset.filter(genres__in=[Genre.objects.get(name__iexact=genre)])
         
         return queryset.order_by("-" + ordering)
 
@@ -99,7 +98,21 @@ def search_results_view(request):
 """
 RATING
 """
-    
+
+class RatingListView(LoginRequiredMixin, ListView):
+    paginate_by = LIST_PAGINATE_BY
+    template_name = "movies/rating_list.html"
+
+    def get_queryset(self):
+        ordering = self.request.GET.get("ordering", "ratings_count")
+        if not ordering:
+            ordering = "ratings_count"
+
+        owner = self.request.user
+        queryset = Rating.objects.filter(owner=owner)
+        
+        return queryset.order_by("-movie__" + ordering)
+
 class RatingAddView(LoginRequiredMixin, View):
     def post(self, request, pk):
         value = int(request.POST['rating'])

@@ -1,19 +1,16 @@
 {% extends "base.html" %}
 {% load static %}
+{% load app_tags %}
 
 {% block content %}
 <div class="d-flex justify-content-between">
     <div id="header">
-        {% if header %}
-        <small class="text-muted">{{ header.side }}</small>
-        <h2>{{ header.main }}</h2>
-        {% endif %}
+        <small class="text-muted"></small>
+        <h2>movies you've rated</h2>
     </div>
     <div class="dropdown">
         <span>sort by: </span>
-        <form action={% url 'movie_list' %} method="get" role="ordering">
-            <input type="hidden" name="genre" value="{{ request.GET.genre }}">
-            <input type="hidden" name="search" value="{{ request.GET.search }}">
+        <form action={% url 'rating_list' %} method="get" role="ordering">
             <select name="ordering" class="form-select form-select-sm mb-2" aria-label="Sort by" onchange="this.form.submit()">
                 <option value="ratings_count" {% if request.GET.ordering == "ratings_count" %}selected{% endif %}># ratings</option>
                 <option value="ratings_average" {% if request.GET.ordering == "ratings_average" %}selected{% endif %}>ratings average</option>
@@ -25,29 +22,25 @@
     </div>
 </div>
 <div class="row row-cols-auto g-3">
-    {% for movie in page_obj %}
+    {% for rating in page_obj %}
     <div class="col">
       <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
         <img
             loading="lazy" 
-        {% if movie.poster_path %}
-            src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
-            srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
+        {% if rating.movie.poster_path %}
+            src="https://image.tmdb.org/t/p/w185{{ rating.movie.poster_path }}"
+            srcset="https://image.tmdb.org/t/p/w500{{ rating.movie.poster_path }} 2x" 
         {% else %}
             src="{% static 'card_img_placeholder.png' %}" 
         {% endif %}
             class="card-img-top rounded-0" 
-            alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
+            alt="Poster for {{ rating.movie.title }} ({{ rating.movie.release_date.year }})"
         />
         <div class="position-absolute bottom-0 bg-white w-100">
           <div class="fs-6 m-2" style="line-height: 19px;">
-            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none text-muted">{{ movie.title }}</a></p>
+            <p class="mb-2"><a href={% url 'movie_detail' rating.movie.id %} class="text-decoration-none text-muted">{{ rating.movie.title }}</a></p>
             <i class="bi bi-star-fill fst-normal"> 
-                {% if movie.ratings_average %}
-                {{ movie.ratings_average }}
-                {% else %}
-                Not rated
-                {% endif %}
+                {{ rating.value|div:2 }}
             </i>
           </div>
         </div>
@@ -58,8 +51,8 @@
 <div class="pagination">
     <span class="step-links">
         {% if page_obj.has_previous %}
-            <a href="?page=1&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">&laquo; first</a>
-            <a href="?page={{ page_obj.previous_page_number }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">previous</a>
+            <a href="?page=1&ordering={{request.GET.ordering}}">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}&ordering={{request.GET.ordering}}">previous</a>
         {% endif %}
 
         <span class="current">
@@ -67,8 +60,8 @@
         </span>
 
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">last &raquo;</a>
+            <a href="?page={{ page_obj.next_page_number }}&ordering={{request.GET.ordering}}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&ordering={{request.GET.ordering}}">last &raquo;</a>
         {% endif %}
     </span>
 </div>

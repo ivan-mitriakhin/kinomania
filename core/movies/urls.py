@@ -11,4 +11,5 @@ urlpatterns = [
     path('explore/genres', views.GenreListView.as_view(), name="genre_list"),
     path('explore/recent-releases', views.RecentReleasesListView.as_view(), name="recent_releases"),
     path('explore/recently-added', views.RecentlyAddedListView.as_view(), name="recently_added"),
+    path('explore/your-ratings', views.RatingListView.as_view(), name="rating_list")
 ]
