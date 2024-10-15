@@ -19,27 +19,32 @@
                     {{ movie.title }} ({{ movie.release_date.year }})
                 </h1>
                 {% if user.is_authenticated %}
-                <form action={% url 'rating_add' movie.id %} method="post" id="rating-form">
-                    {% csrf_token %}
-                    <fieldset class="rating">
-                        {% for i in 10|rev_range:0 %}
-                        <input type="radio" 
-                            onchange="formSubmit(this)" 
-                            id="star{{ i }}" name="rating" 
-                            value="{{ i }}"
-                            {% if user_rating == i %}checked{% endif %}/>
-                        <label class ={% if i|divisibleby:2 %}"full"{% else %}"half"{% endif %} for="star{{ i }}"></label>
-                        {% endfor %}
-                    </fieldset>
-                </form>
-                <form action={% url 'rating_delete' movie.id %} method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-dark">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                </form>
-                {% endif %}
+                <div class="d-flex align-items-center">
+                    <form action={% url 'rating_add' movie.id %} method="post" id="rating-form">
+                        {% csrf_token %}
+                        <fieldset class="rating">
+                            {% for i in 10|rev_range:0 %}
+                            <input type="radio" 
+                                onchange="formSubmit(this)" 
+                                id="star{{ i }}" name="rating" 
+                                value="{{ i }}"
+                                {% if user_rating == i %}checked{% endif %}/>
+                            <label class ={% if i|divisibleby:2 %}"full"{% else %}"half"{% endif %} for="star{{ i }}"></label>
+                            {% endfor %}
+                        </fieldset>
+                    </form>
+                    {% if user_rating %}
+                    <form action={% url 'rating_delete' movie.id %} method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-dark btn-sm">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% else %}
                 <p class="card-text">&#8205;</p>
+                {% endif %}
                 <p class="card-text pt-1">
                     <span class="badge rounded-pill bg-dark fs-6">
                         {{ movie.ratings_average }}

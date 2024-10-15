@@ -7,7 +7,7 @@ from django.db.models import Avg, Count
 
 from datetime import datetime, timedelta
 
-from movies.models import Movie, Genre, Rating
+from movies.models import Movie, Genre, Rating, MyUser
 
 LIST_PAGINATE_BY = 24
 
@@ -20,8 +20,8 @@ class MovieListView(ListView):
     template_name = "movies/movie_list.html"
 
     def get_queryset(self):
-        search = self.request.GET.get("search")
         ordering = self.request.GET.get("ordering", "ratings_count")
+        search = self.request.GET.get("search")
         if not ordering:
             ordering = "ratings_count"
         genre = self.request.GET.get("genre")
@@ -34,8 +34,12 @@ class MovieListView(ListView):
 
         if genre:
             queryset = queryset.filter(genres__in=[Genre.objects.get(name__iexact=genre)])
-        
-        return queryset.order_by("-" + ordering)
+
+        if ordering == "recommend" and self.request.user.is_authenticated:
+            user = MyUser.objects.get(pk=self.request.user.pk)
+            return user.recommend_movies(queryset)
+        else:
+            return queryset.order_by("-" + ordering)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -46,9 +50,11 @@ class MovieListView(ListView):
             context["header"] = {"side": "you searched for titles like", "main": search}
         else:
             context["header"] = {"side": " ", "main": "all movies"}
-
+        
         if genre:
-            context["header"] = {"side": "browse by", "main": genre}
+            context["header"] = {"side": "browsing by genre", "main": genre.lower()}
+
+        context["ordering"] = True
 
         return context
 
@@ -63,6 +69,20 @@ class MovieDetailView(DetailView):
             context["user_rating"] = value
         return context
 
+class RecommendedMovieListView(LoginRequiredMixin, ListView):
+    paginate_by = LIST_PAGINATE_BY
+    template_name = "movies/movie_list.html"
+
+    def get_queryset(self):
+        user = MyUser.objects.get(pk=self.request.user.pk)
+        return user.recommended_movies()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["header"] = {"side": "movies recommended specifically to you", "main": "top picks"}
+        context["ordering"] = False
+        return context
+
 class RecentReleasesListView(ListView):
     paginate_by = LIST_PAGINATE_BY
     template_name = "movies/movie_list.html"
@@ -73,6 +93,7 @@ class RecentReleasesListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["header"] = {"side": "movies released in last 3600 days", "main": "recent releases"}
+        context["ordering"] = False
         return context
     
 class RecentlyAddedListView(ListView):
@@ -85,6 +106,7 @@ class RecentlyAddedListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["header"] = {"side": "movies recently added", "main": "new additions"}
+        context["ordering"] = False
         return context
     
 def search_results_view(request):
@@ -104,14 +126,17 @@ class RatingListView(LoginRequiredMixin, ListView):
     template_name = "movies/rating_list.html"
 
     def get_queryset(self):
-        ordering = self.request.GET.get("ordering", "ratings_count")
+        ordering = self.request.GET.get("ordering", "rating")
         if not ordering:
-            ordering = "ratings_count"
+            ordering = "rating"
 
         owner = self.request.user
         queryset = Rating.objects.filter(owner=owner)
         
-        return queryset.order_by("-movie__" + ordering)
+        if ordering == "rating":
+            return queryset.order_by("-value")
+        else:
+            return queryset.order_by("-movie__" + ordering)
 
 class RatingAddView(LoginRequiredMixin, View):
     def post(self, request, pk):

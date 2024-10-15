@@ -3,9 +3,12 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
 
+import pandas as pd
 import numpy as np
-from scipy.sparse import load_npz
+import scipy.sparse as sp
 from sklearn.neighbors import NearestNeighbors
+
+from utils.utils import load_X, csr_append
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -90,7 +93,7 @@ class Movie(models.Model):
         self.save(update_fields=['ratings_average', 'ratings_count'])
 
     def similar_movies(self, k=16, metric='cosine'):
-        X = load_npz("data/X.npz")
+        X = load_X()
         movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
         movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
 
@@ -109,11 +112,19 @@ class Movie(models.Model):
         neighbour_ids.pop(0)
         result = [Movie.objects.get(id=i) for i in neighbour_ids]
         return result
+
+    def save(self, **kwargs):
+        if self._state.adding:
+            csr_append(axis=1)
+        super().save(**kwargs)
     
     def __str__(self):
         return self.title
     
 class Rating(models.Model):
+    class Meta:
+        unique_together = ('owner', 'movie')
+
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ratings")
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="ratings")
     value = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)], default=1)
@@ -121,9 +132,19 @@ class Rating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def csr_update(self):
+        X = load_X()
+        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
+        user_mapper = np.load("data/user_mapper.npy", allow_pickle=True).item()
+        i = user_mapper[self.owner.pk]
+        j = movie_mapper[self.movie.pk]
+        X[i, j] = self.value
+        sp.save_npz("data/X.npz", X)
+
     def save(self, **kwargs):
         super().save(**kwargs)
         self.movie.update_ratings_info()
+        self.csr_update()
 
     def delete(self, **kwargs):
         super().delete(**kwargs)
@@ -131,3 +152,74 @@ class Rating(models.Model):
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
+
+class MyUser(User):
+    class Meta:
+        proxy = True
+
+    def recommended_movies(self, num_similar_users=100):
+        X = load_X()
+        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
+        movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
+        user_mapper = np.load("data/user_mapper.npy", allow_pickle=True).item()
+
+        # Converting to mean-centered matrix (subtracting means of each row) 
+        total_vec = np.array(X.sum(axis=1).squeeze())[0]
+        counts_vec = np.diff(X.indptr)
+        mean_vec = total_vec / counts_vec
+        diag_mean_matrix = sp.diags(mean_vec, 0)
+        util_matrix = X.copy()
+        util_matrix.data = np.ones_like(util_matrix.data)
+        mean_matrix = diag_mean_matrix * util_matrix # Each row's non-zero elements are equal to the mean
+        X = X - mean_matrix
+
+        user_id = user_mapper[self.pk]
+        user_vec = X[user_id]       
+        if isinstance(user_vec, (np.ndarray)):
+            user_vec = user_vec.reshape(1,-1)
+
+        # Picking 100 similar users for now
+        kNN = NearestNeighbors(n_neighbors=num_similar_users+1, algorithm="brute", metric="cosine")
+        kNN.fit(X)
+        # Not taking first element as it is the user themselves 
+        neighbour = kNN.kneighbors(user_vec)
+        neighbour_ids = neighbour[1].flatten()[1:]
+        distances = dict(zip(neighbour_ids, neighbour[0].flatten()[1:]))
+
+        # Finding all movies that were rated by the user
+        watched_movies = [movie_mapper[r.movie.id] for r in self.ratings.all()]
+
+        # Selected user-movie matrix
+        similar_user_movies = [X[i].todense() for i in neighbour_ids]
+        similar_user_movies = pd.DataFrame(np.array(similar_user_movies).reshape(num_similar_users, -1), index=neighbour_ids)
+
+        # Deleting movies that were rated by the user
+        similar_user_movies = similar_user_movies[similar_user_movies.columns.difference(watched_movies)]
+        
+        # Removing movies that weren't rated by any of the selected users
+        similar_user_movies = similar_user_movies.loc[:, (similar_user_movies != 0).any(axis=0)]
+
+        movie_score = []
+
+        for i in similar_user_movies.columns:
+            # Get the ratings for movie i
+            movie_ratings = similar_user_movies.loc[:, i]
+            scores = []
+            for n in neighbour_ids:
+                rating = movie_ratings[n]
+                sim_score = distances[n]
+                if rating != 0:
+                    score = sim_score * rating
+                    scores.append(score)
+            movie_score.append( (i, np.mean(scores)) )
+
+        # Sorting movie-score array by score and picking k of them
+        movie_score = sorted(movie_score, key=lambda x: x[1], reverse=True)
+        result = [Movie.objects.get(id=movie_inv_mapper[i]) for i, _ in movie_score]
+        return result
+    
+    def save(self, **kwargs):
+        if self._state.adding:
+            csr_append(axis=0)
+        super().save(**kwargs)
+                

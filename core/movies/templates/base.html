@@ -30,7 +30,7 @@
                     <li>
                       <h6 class="dropdown-header fw-bold">QUICK LINKS</h6>
                       <a class="dropdown-item" href={% url 'movie_list' %}>Home</a>
-                      <a class="dropdown-item" href="#">Top picks for you</a>
+                      <a class="dropdown-item" href={% url 'recommended_movie_list' %}>Top picks for you</a>
                       <a class="dropdown-item" href={% url 'recent_releases' %}>Recently released</a>
                       <a class="dropdown-item" href={% url 'recently_added' %}>New additions</a>
                     </li>
@@ -74,7 +74,7 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="rightnavDropdown">
                   <li>
-                    <form action="{% url 'logout' %}" method="post">
+                    <form action="{% url 'logout' %}?next={{ request.path }}" method="post">
                       {% csrf_token %}
                       <button class="dropdown-item" type="submit">Logout</button>
                     </form>
@@ -82,7 +82,7 @@
                 </ul>
               </li>
               {% else %}
-              <li class="nav-item"><a class="nav-link" href="{% url 'login' %}?next={% url 'movie_list' %}">Login</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'login' %}?next={{ request.path }}">Login</a></li>
               {% endif %}
             </ul>
           </div>

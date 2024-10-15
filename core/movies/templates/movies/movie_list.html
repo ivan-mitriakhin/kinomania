@@ -9,6 +9,7 @@
         <h2>{{ header.main }}</h2>
         {% endif %}
     </div>
+    {% if ordering %}
     <div class="dropdown">
         <span>sort by: </span>
         <form action={% url 'movie_list' %} method="get" role="ordering">
@@ -23,6 +24,7 @@
             </select>
         </form>
     </div>
+    {% endif %}
 </div>
 <div class="row row-cols-auto g-3">
     {% for movie in page_obj %}
@@ -58,8 +60,8 @@
 <div class="pagination">
     <span class="step-links">
         {% if page_obj.has_previous %}
-            <a href="?page=1&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">&laquo; first</a>
-            <a href="?page={{ page_obj.previous_page_number }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">previous</a>
+            <a href="?page=1{% if ordering %}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}{% endif %}">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if ordering %}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}{% endif %}">previous</a>
         {% endif %}
 
         <span class="current">
@@ -67,8 +69,8 @@
         </span>
 
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}">last &raquo;</a>
+            <a href="?page={{ page_obj.next_page_number }}{% if ordering %}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}{% endif %}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if ordering %}&genre={{request.GET.genre}}&search={{request.GET.search}}&ordering={{request.GET.ordering}}{% endif %}">last &raquo;</a>
         {% endif %}
     </span>
 </div>

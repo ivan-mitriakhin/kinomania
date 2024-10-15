@@ -6,10 +6,11 @@ from movies.models import Rating
 
 def run():
         """
-        Generates a sparse matrix from ratings dataframe.
-        
-        Args:
-            df: pandas dataframe containing 3 columns (owner_id, movie_id, value)
+        Generates a sparse user-item matrix from ratings dataframe. 
+        IMPORTANT: Use this script only to generate a new matrix as
+        it takes a lot of time to create it. If you're trying
+        to extend the matrix with new rows (users) or columns (items)
+        the util method csr_append() is used.
         
         Returns:
             X: sparse matrix
