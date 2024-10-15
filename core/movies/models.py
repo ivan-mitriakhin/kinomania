@@ -8,7 +8,7 @@ import numpy as np
 import scipy.sparse as sp
 from sklearn.neighbors import NearestNeighbors
 
-from utils.utils import load_X, csr_append
+from utils.csr_utils import load_X, csr_append
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -132,23 +132,28 @@ class Rating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def csr_update(self):
+    def csr_update(self, save=True):
         X = load_X()
         movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
         user_mapper = np.load("data/user_mapper.npy", allow_pickle=True).item()
         i = user_mapper[self.owner.pk]
         j = movie_mapper[self.movie.pk]
-        X[i, j] = self.value
+        if save:
+            X[i, j] = self.value
+        else:
+            X[i, j] = 0
+            X.eliminate_zeros()
         sp.save_npz("data/X.npz", X)
 
     def save(self, **kwargs):
         super().save(**kwargs)
         self.movie.update_ratings_info()
-        self.csr_update()
+        self.csr_update(save=True)
 
     def delete(self, **kwargs):
         super().delete(**kwargs)
         self.movie.update_ratings_info()
+        self.csr_update(save=False)
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"

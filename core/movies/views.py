@@ -72,6 +72,7 @@ class MovieDetailView(DetailView):
 class RecommendedMovieListView(LoginRequiredMixin, ListView):
     paginate_by = LIST_PAGINATE_BY
     template_name = "movies/movie_list.html"
+    login_url = '/profile/login/'
 
     def get_queryset(self):
         user = MyUser.objects.get(pk=self.request.user.pk)

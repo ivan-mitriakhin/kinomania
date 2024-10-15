@@ -6,7 +6,7 @@ def load_X():
     while True:
         try:
             X = sp.load_npz("data/X.npz")
-        except BadZipfile:
+        except (BadZipfile, EOFError):
             print("X is being saved into the system, please wait.")
         else:
             print("X loaded successfully.")
