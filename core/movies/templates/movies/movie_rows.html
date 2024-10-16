@@ -1,0 +1,33 @@
+{% if head %}<p class="fs-5 fw-bold mt-2 mb-1"><a class="link-dark" href={{ href }}>{{ head }}</a></p>{% endif %}
+<div class="row row-cols-auto g-3">
+    {% for movie in queryset %}
+    <div class="col">
+        <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
+            <img
+                loading="lazy" 
+            {% if movie.poster_path %}
+                src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
+                srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
+            {% else %}
+                src="{% static 'card_img_placeholder.png' %}" 
+            {% endif %}
+                class="card-img-top rounded-0" 
+                alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
+            />
+            <div class="position-absolute bottom-0 bg-white w-100">
+                <div class="fs-6 m-2" style="line-height: 19px;">
+                    <p class="mb-2">{{ movie.title }}</p>
+                    <i class="bi bi-star-fill fst-normal"> 
+                        {% if movie.ratings_average %}
+                        {{ movie.ratings_average }}
+                        {% else %}
+                        Not rated
+                        {% endif %}
+                    </i>
+                </div>
+            </div>
+            <a href={% url 'movie_detail' movie.id %} class="stretched-link"></a>
+        </div>
+    </div>
+    {% endfor %}
+</div>

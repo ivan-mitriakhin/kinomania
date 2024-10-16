@@ -109,6 +109,17 @@ class RecentlyAddedListView(ListView):
         context["header"] = {"side": "movies recently added", "main": "new additions"}
         context["ordering"] = False
         return context
+
+class HomeView(View):
+    def get(self, request):
+        context = {}
+        if self.request.user.is_authenticated:
+            user = MyUser.objects.get(pk=self.request.user.pk)
+            context["top_picks_movies"] = user.recommended_movies()[:8]
+        context["popular_movies"] = Movie.objects.all().order_by("-ratings_count")[:8]
+        context["recently_released_movies"] = Movie.objects.filter(release_date__gte=datetime.now()-timedelta(days=3600)).order_by('-release_date')[:8]
+        context["recently_added_movies"] = Movie.objects.order_by('-created_at')[:8]
+        return render(request, "movies/home.html", context)
     
 def search_results_view(request):
     query = request.GET.get('search', '')

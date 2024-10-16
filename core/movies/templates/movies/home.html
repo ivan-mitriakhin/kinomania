@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex flex-column">
+    {% if top_picks_movies %}
+    {% url 'recommended_movie_list' as url %}
+    {% include 'movies/movie_rows.html' with head="recommended" queryset=top_picks_movies href=url %}
+    {% endif%}
+    {% url 'movie_list' as url %}
+    {% include 'movies/movie_rows.html' with head="popular" queryset=popular_movies href=url %}
+    {% url 'recent_releases' as url %}
+    {% include 'movies/movie_rows.html' with head="recently released" queryset=recently_released_movies href=url %}
+    {% url 'recently_added' as url %}
+    {% include 'movies/movie_rows.html' with head="new additions" queryset=recently_added_movies href=url %}
+</div>
+{% endblock %}

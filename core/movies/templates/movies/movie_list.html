@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block content %}
 <div class="d-flex justify-content-between">
@@ -26,37 +25,7 @@
     </div>
     {% endif %}
 </div>
-<div class="row row-cols-auto g-3">
-    {% for movie in page_obj %}
-    <div class="col">
-      <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
-        <img
-            loading="lazy" 
-        {% if movie.poster_path %}
-            src="https://image.tmdb.org/t/p/w185{{ movie.poster_path }}"
-            srcset="https://image.tmdb.org/t/p/w500{{ movie.poster_path }} 2x" 
-        {% else %}
-            src="{% static 'card_img_placeholder.png' %}" 
-        {% endif %}
-            class="card-img-top rounded-0" 
-            alt="Poster for {{ movie.title }} ({{ movie.release_date.year }})"
-        />
-        <div class="position-absolute bottom-0 bg-white w-100">
-          <div class="fs-6 m-2" style="line-height: 19px;">
-            <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none text-muted">{{ movie.title }}</a></p>
-            <i class="bi bi-star-fill fst-normal"> 
-                {% if movie.ratings_average %}
-                {{ movie.ratings_average }}
-                {% else %}
-                Not rated
-                {% endif %}
-            </i>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-</div>
+{% include 'movies/movie_rows.html' with queryset=page_obj %}
 <div class="pagination">
     <span class="step-links">
         {% if page_obj.has_previous %}
