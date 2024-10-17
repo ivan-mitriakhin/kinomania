@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 import pandas as pd
 import numpy as np
@@ -112,11 +114,6 @@ class Movie(models.Model):
         neighbour_ids.pop(0)
         result = [Movie.objects.get(id=i) for i in neighbour_ids]
         return result
-
-    def save(self, **kwargs):
-        if self._state.adding:
-            csr_append(axis=1)
-        super().save(**kwargs)
     
     def __str__(self):
         return self.title
@@ -222,9 +219,13 @@ class MyUser(User):
         movie_score = sorted(movie_score, key=lambda x: x[1], reverse=True)
         result = [Movie.objects.get(id=movie_inv_mapper[i]) for i, _ in movie_score]
         return result
-    
-    def save(self, **kwargs):
-        if self._state.adding:
-            csr_append(axis=0)
-        super().save(**kwargs)
-                
+
+@receiver(post_save, sender=MyUser)
+def update_X(sender, instance, created, **kwargs):
+    if created:
+        csr_append(instance, axis=0)
+
+@receiver(post_save, sender=Movie)
+def update_X(sender, instance, created, **kwargs):
+    if created:
+        csr_append(instance, axis=1)

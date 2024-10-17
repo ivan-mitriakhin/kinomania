@@ -4,6 +4,7 @@ from movies import views
 
 urlpatterns = [
     path('home', views.HomeView.as_view(), name="home"),
+    path('sign-up', views.UserCreateView.as_view(), name="sign_up"),
     path('<int:pk>', views.MovieDetailView.as_view(), name="movie_detail"),
     path('<int:pk>/rate', views.RatingAddView.as_view(), name="rating_add"),
     path('<int:pk>/unrate', views.RatingDeleteView.as_view(), name="rating_delete"),

@@ -1,4 +1,4 @@
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import ListView, DetailView
 from django.shortcuts import redirect, render
@@ -7,6 +7,7 @@ from django.db.models import Avg, Count
 
 from datetime import datetime, timedelta
 
+from movies.forms import MyUserCreationForm
 from movies.models import Movie, Genre, Rating, MyUser
 
 LIST_PAGINATE_BY = 24
@@ -178,3 +179,23 @@ class GenreListView(ListView):
     
     def get_queryset(self):
         return Genre.objects.annotate(count=Count('movie')).order_by('-count')
+    
+"""
+USER
+"""    
+
+class UserCreateView(View):
+    template_name = "registration/register.html"
+    success_url = reverse_lazy("login")
+
+    def post(self, request):
+        form = MyUserCreationForm(request.POST)
+        if not form.is_valid():
+            return render(request, self.template_name, { "form": form })
+        
+        form.save()
+        return redirect(self.success_url)
+    
+    def get(self, request):
+        form = MyUserCreationForm()
+        return render(request, self.template_name, { "form": form })
