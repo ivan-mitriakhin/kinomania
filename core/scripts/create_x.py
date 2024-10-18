@@ -1,8 +1,10 @@
-import pandas as pd
+import connectorx as cx
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz
 
 from movies.models import Rating
+
+CONNECTION = 'sqlite://db.sqlite3'
 
 def run():
         """
@@ -20,7 +22,8 @@ def run():
             movie_inv_mapper: dict that maps movie indices to movie id's
         """
 
-        df = pd.DataFrame.from_records(Rating.objects.all().values("owner_id", "movie_id", "value"))
+        query = str(Rating.objects.all().values("owner_id", "movie_id", "value").query)
+        df = cx.read_sql(CONNECTION, query)
 
         M = df['owner_id'].nunique()
         N = df['movie_id'].nunique()
