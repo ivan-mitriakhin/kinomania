@@ -1,8 +1,16 @@
+import unicodedata
 import pandas as pd
 import requests
 import os
 
-from movies.models import Language, Genre, Company, Country, Person, Movie
+from django.db.models import signals
+
+from movies.models import Language, Genre, Company, Country, Person, Movie, update_X
+
+def strip_accents(text):
+    return ''.join(char for char in
+                   unicodedata.normalize('NFKD', text)
+                   if unicodedata.category(char) != 'Mn')
 
 def process_objects(objs, model):
     result = []
@@ -26,7 +34,7 @@ def process_persons(objs, job=None):
     for obj in objs:
         if job and (obj["job"].lower() not in job):
             continue
-        name = obj["name"].strip().title()
+        name = strip_accents(obj["name"].strip().title())
         tmdb_id = obj["id"]
         profile_path = obj.get("profile_path")
         obj, created = Person.objects.get_or_create(tmdb_id=tmdb_id, name=name)
@@ -42,6 +50,8 @@ def get_default_if_none(data, field, model):
     return value if value else model._meta.get_field(field).get_default()
 
 def run():
+    signals.post_save.disconnect(receiver=update_X, sender=Movie)
+
     movies = pd.read_csv("movies.csv")
 
     for _, movie in movies.iterrows():

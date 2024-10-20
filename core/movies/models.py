@@ -23,47 +23,47 @@ PRODUCTION_STATUSES = { status.upper():status for status in [
 }
 
 class Language(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
     def __str__(self):
         return self.name
 
 class Genre(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
     def movie_count(self):
         return self.movie_set.count()
     def __str__(self):
         return self.name
 
 class Company(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
     def __str__(self):
         return self.name
 
 class Country(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
     def __str__(self):
         return self.name
 
 class Person(models.Model):
     tmdb_id = models.IntegerField(unique=True)
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
     profile_path = models.CharField(max_length=32, blank=True, default="")
     def __str__(self):
         return self.name
 
 class Movie(models.Model):
-    title = models.CharField(max_length=100, unique_for_date="release_date")
-    orig_title = models.CharField(max_length=100, unique_for_date="release_date")
+    title = models.CharField(max_length=255, unique_for_date="release_date")
+    orig_title = models.CharField(max_length=255, unique_for_date="release_date")
 
     status = models.CharField(max_length=15, choices=PRODUCTION_STATUSES)
     release_date = models.DateField(null=True, blank=True)
-    revenue = models.PositiveIntegerField(blank=True, default=0)
+    revenue = models.PositiveBigIntegerField(blank=True, default=0)
     budget = models.PositiveIntegerField(blank=True, default=0)
 
     runtime = models.PositiveSmallIntegerField(null=True, blank=True)
     spoken_langs = models.ManyToManyField(Language)
 
-    tagline = models.CharField(max_length=100, blank=True, default="")
+    tagline = models.CharField(max_length=255, blank=True, default="")
     overview = models.TextField(blank=True, default="")
 
     genres = models.ManyToManyField(Genre)
@@ -96,21 +96,18 @@ class Movie(models.Model):
 
     def similar_movies(self, k=16, metric='cosine'):
         X = load_X()
-        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
-        movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
 
         X = X.T
         neighbour_ids = []
 
-        movie_ind = movie_mapper[self.id]
-        movie_vec = X[movie_ind]
+        movie_vec = X[self.id - 1]
         if isinstance(movie_vec, (np.ndarray)):
             movie_vec = movie_vec.reshape(1,-1)
 
         kNN = NearestNeighbors(n_neighbors=k+1, algorithm="brute", metric=metric)
         kNN.fit(X)
         neighbour = kNN.kneighbors(movie_vec, return_distance=False)
-        neighbour_ids = [movie_inv_mapper[n] for n in neighbour[0]]
+        neighbour_ids = [i + 1 for i in neighbour[0]]
         neighbour_ids.pop(0)
         result = [Movie.objects.get(id=i) for i in neighbour_ids]
         return result
@@ -161,9 +158,6 @@ class MyUser(User):
 
     def recommended_movies(self, num_similar_users=100):
         X = load_X()
-        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
-        movie_inv_mapper = np.load("data/movie_inv_mapper.npy", allow_pickle=True).item()
-        user_mapper = np.load("data/user_mapper.npy", allow_pickle=True).item()
 
         # Converting to mean-centered matrix (subtracting means of each row) 
         total_vec = np.array(X.sum(axis=1).squeeze())[0]
@@ -175,21 +169,20 @@ class MyUser(User):
         mean_matrix = diag_mean_matrix * util_matrix # Each row's non-zero elements are equal to the mean
         X = X - mean_matrix
 
-        user_id = user_mapper[self.pk]
-        user_vec = X[user_id]       
+        user_vec = X[self.pk - 1]       
         if isinstance(user_vec, (np.ndarray)):
             user_vec = user_vec.reshape(1,-1)
 
         # Picking 100 similar users for now
         kNN = NearestNeighbors(n_neighbors=num_similar_users+1, algorithm="brute", metric="cosine")
         kNN.fit(X)
-        # Not taking first element as it is the user themselves 
         neighbour = kNN.kneighbors(user_vec)
+        # Not taking first element as it is the user themselves 
         neighbour_ids = neighbour[1].flatten()[1:]
         distances = dict(zip(neighbour_ids, neighbour[0].flatten()[1:]))
 
         # Finding all movies that were rated by the user
-        watched_movies = [movie_mapper[r.movie.id] for r in self.ratings.all()]
+        watched_movies = [r.movie.id - 1 for r in self.ratings.all()]
 
         # Selected user-movie matrix
         similar_user_movies = [X[i].todense() for i in neighbour_ids]
@@ -217,7 +210,7 @@ class MyUser(User):
 
         # Sorting movie-score array by score and picking k of them
         movie_score = sorted(movie_score, key=lambda x: x[1], reverse=True)
-        result = [Movie.objects.get(id=movie_inv_mapper[i]) for i, _ in movie_score]
+        result = [Movie.objects.get(id=i+1) for i, _ in movie_score]
         return result
 
 @receiver(post_save, sender=MyUser)

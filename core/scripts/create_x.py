@@ -2,7 +2,7 @@ import connectorx as cx
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz
 
-from movies.models import Rating
+from movies.models import Rating, Movie, MyUser
 
 CONNECTION = 'sqlite://db.sqlite3'
 
@@ -25,23 +25,13 @@ def run():
         query = str(Rating.objects.all().values("owner_id", "movie_id", "value").query)
         df = cx.read_sql(CONNECTION, query)
 
-        M = df['owner_id'].nunique()
-        N = df['movie_id'].nunique()
+        M = MyUser.objects.count()
+        N = Movie.objects.count()
 
-        user_mapper = dict(zip(np.unique(df["owner_id"]), list(range(M))))
-        movie_mapper = dict(zip(np.unique(df["movie_id"]), list(range(N))))
-        
-        user_inv_mapper = dict(zip(list(range(M)), np.unique(df["owner_id"])))
-        movie_inv_mapper = dict(zip(list(range(N)), np.unique(df["movie_id"])))
-        
-        user_index = [user_mapper[i] for i in df['owner_id']]
-        item_index = [movie_mapper[i] for i in df['movie_id']]
+        user_index = [i - 1 for i in df['owner_id']]
+        item_index = [i - 1 for i in df['movie_id']]
 
-        X = csr_matrix((df["value"], (user_index,item_index)), shape=(M,N))
+        X = csr_matrix((df["value"], (user_index,item_index)), shape=(M,N), dtype=np.int8)
 
         save_npz("data/X.npz", X)
-        np.save("data/user_mapper.npy", user_mapper)
-        np.save("data/movie_mapper.npy", movie_mapper)
-        np.save("data/user_inv_mapper.npy", user_inv_mapper)
-        np.save("data/movie_inv_mapper.npy", movie_inv_mapper)
         
