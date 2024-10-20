@@ -15,4 +15,5 @@ urlpatterns = [
     path('explore/recently-added', views.RecentlyAddedListView.as_view(), name="recently_added"),
     path('explore/your-ratings', views.RatingListView.as_view(), name="rating_list"),
     path('explore/top-picks', views.RecommendedMovieListView.as_view(), name="recommended_movie_list"),
+    path('explore/recommender-select', views.RecommenderSelectView.as_view(), name="recommender_select")
 ]

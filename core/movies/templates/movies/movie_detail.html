@@ -20,7 +20,7 @@
                 </h1>
                 {% if user.is_authenticated %}
                 <div class="d-flex align-items-center">
-                    <form action={% url 'rating_add' movie.id %} method="post" id="rating-form">
+                    <form action={% url 'rating_add' movie.id %} method="post" id="rating-form" onsubmit="openLoader()">
                         {% csrf_token %}
                         <fieldset class="rating">
                             {% for i in 10|rev_range:0 %}
@@ -47,7 +47,7 @@
                 {% endif %}
                 <p class="card-text pt-1">
                     <span class="badge rounded-pill bg-dark fs-6">
-                        {{ movie.ratings_average }}
+                        {{ movie.ratings_average|floatformat:1 }}
                     </span>
                     <small class="fw-lighter">
                         Average of {{ movie.ratings_count }} ratings
@@ -150,7 +150,7 @@
         <div class="position-absolute bottom-0 bg-white w-100">
             <div class="fs-6 m-2" style="line-height: 19px;">
             <p class="mb-2"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none text-muted">{{ movie.title }}</a></p>
-            <i class="bi bi-star-fill"> {{ movie.ratings_average }}</i>
+            <i class="bi bi-star-fill"> {{ movie.ratings_average|floatformat:1 }}</i>
             </div>
         </div>
         </div>

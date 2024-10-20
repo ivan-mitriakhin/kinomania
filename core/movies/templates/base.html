@@ -64,6 +64,32 @@
                 {% include 'movies/search_results.html' %}
               </div>
             </form>
+            <div id="loadingModal" style="display: none;">
+              <span class="spinner-border spinner-grow-sm" role="status" aria-hidden="true"></span>
+            </div>
+            {% if user.is_authenticated %}
+            <ul class="navbar-nav mb-2 mb-lg-0">
+              <li class="nav-item dropstart">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-star fst-normal"> {{ user.ratings.count }}</i>
+                </a>
+                <form action={% url 'recommender_select' %} method="post" onsubmit="openLoader()">
+                    {% csrf_token %}
+                    <ul class="dropdown-menu">
+                      <li class="dropdown-item {% if user.recommend.recommender_type == 1 %}active{% endif %}">
+                        <button class="dropdown-item" name="recommender_type" value="1" type="submit">Non-personalized</button>
+                      </li>
+                      <li class="dropdown-item {% if user.recommend.recommender_type == 2 %}active{% endif %}">
+                        <button class="dropdown-item {% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="2" type="submit">Personalized 1</button>
+                      </li>
+                      <li class="dropdown-item {% if user.recommend.recommender_type == 3 %}active{% endif %}">
+                        <button class="dropdown-item {% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="3" type="submit">Personalized 2</button>
+                      </li>
+                    </ul>
+                </form>
+              </li>
+            </ul>
+            {% endif %}
             <ul class="navbar-nav mb-2 mb-lg-0">
               {% if user.is_authenticated %}
               <li class="nav-item dropdown">
@@ -72,7 +98,7 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="rightnavDropdown">
                   <li>
-                    <form action="{% url 'logout' %}?next={{ request.path }}" method="post">
+                    <form action="{% url 'logout' %}?next={{ request.path }}" method="post" onsubmit="openLoader()">
                       {% csrf_token %}
                       <button class="dropdown-item" type="submit">Logout</button>
                     </form>
@@ -89,5 +115,10 @@
       <div class="container py-4">
         {% block content %}{% endblock %}
       </div>
+      <script>
+        function openLoader() {
+            document.getElementById("loadingModal").style.display = "block";
+          }
+      </script>
   </body>
 </html>

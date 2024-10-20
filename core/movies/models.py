@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+import implicit
 import pandas as pd
 import numpy as np
 import scipy.sparse as sp
@@ -86,30 +87,31 @@ class Movie(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    bayesian_average = models.FloatField(blank=True, null=True, default=0)
     ratings_average = models.FloatField(blank=True, null=True, default=0)
     ratings_count = models.IntegerField(blank=True, default=0)
 
     def update_ratings_info(self):
-        self.ratings_average = round(self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2, 1) if self.ratings.count() > 0 else None
-        self.ratings_count = self.ratings.count()
-        self.save(update_fields=['ratings_average', 'ratings_count'])
+        # https://en.wikipedia.org/wiki/Bayesian_average
+        C = Movie.objects.aggregate(models.Avg('ratings_count'))['ratings_count__avg']
+        m = Movie.objects.aggregate(models.Avg('ratings_average'))['ratings_average__avg']
+        count = self.ratings.count()
+        sum = self.ratings.aggregate(models.Sum('value'))['value__sum'] / 2
 
-    def similar_movies(self, k=16, metric='cosine'):
+        self.ratings_count = count
+        self.bayesian_average = (C * m + sum) / (C + count) if count > 0 else None
+        self.ratings_average = self.ratings.aggregate(models.Avg('value'))['value__avg'] / 2 if count > 0 else None
+        self.save(update_fields=['bayesian_average', 'ratings_average', 'ratings_count'])
+
+    def similar_movies(self, N=16):
         X = load_X()
 
-        X = X.T
-        neighbour_ids = []
-
-        movie_vec = X[self.id - 1]
-        if isinstance(movie_vec, (np.ndarray)):
-            movie_vec = movie_vec.reshape(1,-1)
-
-        kNN = NearestNeighbors(n_neighbors=k+1, algorithm="brute", metric=metric)
-        kNN.fit(X)
-        neighbour = kNN.kneighbors(movie_vec, return_distance=False)
-        neighbour_ids = [i + 1 for i in neighbour[0]]
-        neighbour_ids.pop(0)
-        result = [Movie.objects.get(id=i) for i in neighbour_ids]
+        model = implicit.nearest_neighbours.CosineRecommender()
+        model.fit(X, show_progress=False)
+        items_scores = model.similar_items(itemid=self.pk-1, N=N)
+        similar_items = items_scores[0][1:] # Not including the object itself
+        
+        result = [Movie.objects.get(id=i+1) for i in similar_items]
         return result
     
     def __str__(self):
@@ -128,15 +130,22 @@ class Rating(models.Model):
 
     def csr_update(self, save=True):
         X = load_X()
-        movie_mapper = np.load("data/movie_mapper.npy", allow_pickle=True).item()
-        user_mapper = np.load("data/user_mapper.npy", allow_pickle=True).item()
-        i = user_mapper[self.owner.pk]
-        j = movie_mapper[self.movie.pk]
+        i = self.owner.pk - 1
+        j = self.movie.pk - 1
         if save:
             X[i, j] = self.value
         else:
             X[i, j] = 0
             X.eliminate_zeros()
+
+        knn_model = implicit.nearest_neighbours.CosineRecommender.load("data/knn_model")
+        als_model = implicit.cpu.als.AlternatingLeastSquares.load("data/als_model")
+        knn_model.fit(X)
+        als_model.partial_fit_users([i], X[i])
+        als_model.partial_fit_items([j], X.T[j])
+        knn_model.save('data/knn_model')
+        als_model.save('data/als_model')
+
         sp.save_npz("data/X.npz", X)
 
     def save(self, **kwargs):
@@ -151,74 +160,49 @@ class Rating(models.Model):
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
+    
+class Recommend(models.Model):
+    class RecommenderType(models.IntegerChoices):
+        NON_PERSONALIZED = 1
+        PERSONALIZED_1 = 2
+        PERSONALIZED_2 = 3
 
-class MyUser(User):
-    class Meta:
-        proxy = True
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    recommender_type = models.PositiveSmallIntegerField(choices=RecommenderType, default=RecommenderType.NON_PERSONALIZED)
 
-    def recommended_movies(self, num_similar_users=100):
-        X = load_X()
-
-        # Converting to mean-centered matrix (subtracting means of each row) 
-        total_vec = np.array(X.sum(axis=1).squeeze())[0]
-        counts_vec = np.diff(X.indptr)
-        mean_vec = total_vec / counts_vec
-        diag_mean_matrix = sp.diags(mean_vec, 0)
-        util_matrix = X.copy()
-        util_matrix.data = np.ones_like(util_matrix.data)
-        mean_matrix = diag_mean_matrix * util_matrix # Each row's non-zero elements are equal to the mean
-        X = X - mean_matrix
-
-        user_vec = X[self.pk - 1]       
-        if isinstance(user_vec, (np.ndarray)):
-            user_vec = user_vec.reshape(1,-1)
-
-        # Picking 100 similar users for now
-        kNN = NearestNeighbors(n_neighbors=num_similar_users+1, algorithm="brute", metric="cosine")
-        kNN.fit(X)
-        neighbour = kNN.kneighbors(user_vec)
-        # Not taking first element as it is the user themselves 
-        neighbour_ids = neighbour[1].flatten()[1:]
-        distances = dict(zip(neighbour_ids, neighbour[0].flatten()[1:]))
-
-        # Finding all movies that were rated by the user
-        watched_movies = [r.movie.id - 1 for r in self.ratings.all()]
-
-        # Selected user-movie matrix
-        similar_user_movies = [X[i].todense() for i in neighbour_ids]
-        similar_user_movies = pd.DataFrame(np.array(similar_user_movies).reshape(num_similar_users, -1), index=neighbour_ids)
-
-        # Deleting movies that were rated by the user
-        similar_user_movies = similar_user_movies[similar_user_movies.columns.difference(watched_movies)]
+    def recommended_movies(self, N=1000):
+        if self.recommender_type == self.RecommenderType.NON_PERSONALIZED:
+            return Movie.objects.order_by(models.F('bayesian_average').desc(nulls_last=True))[:N]
         
-        # Removing movies that weren't rated by any of the selected users
-        similar_user_movies = similar_user_movies.loc[:, (similar_user_movies != 0).any(axis=0)]
+        model = None
+        if self.recommender_type == self.RecommenderType.PERSONALIZED_1:
+            model = implicit.nearest_neighbours.CosineRecommender()
+        elif self.recommender_type == self.RecommenderType.PERSONALIZED_2:
+            model = implicit.cpu.als.AlternatingLeastSquares(factors=50)
 
-        movie_score = []
+        X = load_X()
+        model.fit(X, show_progress=False)
+        X.dtype = np.float32
+        id = self.user.pk - 1
+        items_scores = model.recommend(id, X[id], N=N)
+        recommended_items = items_scores[0]
 
-        for i in similar_user_movies.columns:
-            # Get the ratings for movie i
-            movie_ratings = similar_user_movies.loc[:, i]
-            scores = []
-            for n in neighbour_ids:
-                rating = movie_ratings[n]
-                sim_score = distances[n]
-                if rating != 0:
-                    score = sim_score * rating
-                    scores.append(score)
-            movie_score.append( (i, np.mean(scores)) )
-
-        # Sorting movie-score array by score and picking k of them
-        movie_score = sorted(movie_score, key=lambda x: x[1], reverse=True)
-        result = [Movie.objects.get(id=i+1) for i, _ in movie_score]
+        result = [Movie.objects.get(id=i+1) for i in recommended_items]
         return result
 
-@receiver(post_save, sender=MyUser)
+@receiver(post_save, sender=User)
+def create_recommend(sender, instance, created, **kwargs):
+    if created:
+        r = Recommend(user=instance,
+                      recommender_type=instance.RecommenderType.NON_PERSONALIZED)
+        r.save()
+
+@receiver(post_save, sender=User)
 def update_X(sender, instance, created, **kwargs):
     if created:
-        csr_append(instance, axis=0)
+        csr_append(axis=0)
 
 @receiver(post_save, sender=Movie)
 def update_X(sender, instance, created, **kwargs):
     if created:
-        csr_append(instance, axis=1)
+        csr_append(axis=1)

@@ -1,14 +1,16 @@
+from django.http import Http404
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import ListView, DetailView
 from django.shortcuts import redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Avg, Count
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+from django.db.models import Avg, Count, F
 
 from datetime import datetime, timedelta
 
-from movies.forms import MyUserCreationForm
-from movies.models import Movie, Genre, Rating, MyUser
+from movies.models import Movie, Genre, Rating
 
 LIST_PAGINATE_BY = 24
 
@@ -36,11 +38,7 @@ class MovieListView(ListView):
         if genre:
             queryset = queryset.filter(genres__in=[Genre.objects.get(name__iexact=genre)])
 
-        if ordering == "recommend" and self.request.user.is_authenticated:
-            user = MyUser.objects.get(pk=self.request.user.pk)
-            return user.recommend_movies(queryset)
-        else:
-            return queryset.order_by("-" + ordering)
+        return queryset.order_by(F(ordering).desc(nulls_last=True))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -76,8 +74,8 @@ class RecommendedMovieListView(LoginRequiredMixin, ListView):
     login_url = '/profile/login/'
 
     def get_queryset(self):
-        user = MyUser.objects.get(pk=self.request.user.pk)
-        return user.recommended_movies()
+        user = self.request.user
+        return user.recommend.recommended_movies()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -115,8 +113,8 @@ class HomeView(View):
     def get(self, request):
         context = {}
         if self.request.user.is_authenticated:
-            user = MyUser.objects.get(pk=self.request.user.pk)
-            context["top_picks_movies"] = user.recommended_movies()[:8]
+            user = self.request.user
+            context["top_picks_movies"] = user.recommend.recommended_movies(N=8)
         context["popular_movies"] = Movie.objects.all().order_by("-ratings_count")[:8]
         context["recently_released_movies"] = Movie.objects.filter(release_date__gte=datetime.now()-timedelta(days=3600)).order_by('-release_date')[:8]
         context["recently_added_movies"] = Movie.objects.order_by('-created_at')[:8]
@@ -189,7 +187,7 @@ class UserCreateView(View):
     success_url = reverse_lazy("login")
 
     def post(self, request):
-        form = MyUserCreationForm(request.POST)
+        form = UserCreationForm(request.POST)
         if not form.is_valid():
             return render(request, self.template_name, { "form": form })
         
@@ -197,5 +195,15 @@ class UserCreateView(View):
         return redirect(self.success_url)
     
     def get(self, request):
-        form = MyUserCreationForm()
+        form = UserCreationForm()
         return render(request, self.template_name, { "form": form })
+
+class RecommenderSelectView(LoginRequiredMixin, View):
+    def post(self, request):
+        user = self.request.user
+        recommender_type = request.POST.get('recommender_type')
+        if user.ratings.count() <= 15 and int(recommender_type) in [2, 3]:
+            raise Http404("Please rate at least 15 movies in order to pick personalized recommenders.")
+        user.recommend.recommender_type = recommender_type
+        user.recommend.save()
+        return redirect(request.META.get('HTTP_REFERER', '/'))

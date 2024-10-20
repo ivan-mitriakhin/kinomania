@@ -11,7 +11,7 @@
     {% if ordering %}
     <div class="dropdown">
         <span>sort by: </span>
-        <form action={% url 'movie_list' %} method="get" role="ordering">
+        <form action={% url 'movie_list' %} method="get" role="ordering" onsubmit="openLoader()">
             <input type="hidden" name="genre" value="{{ request.GET.genre }}">
             <input type="hidden" name="search" value="{{ request.GET.search }}">
             <select name="ordering" class="form-select form-select-sm mb-2" aria-label="Sort by" onchange="this.form.submit()">

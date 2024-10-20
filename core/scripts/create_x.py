@@ -1,10 +1,13 @@
+import os
 import connectorx as cx
 import numpy as np
-from scipy.sparse import csr_matrix, save_npz
+import implicit
+from scipy.sparse import coo_matrix, save_npz
 
-from movies.models import Rating, Movie, MyUser
+from django.contrib.auth.models import User
+from movies.models import Rating, Movie
 
-CONNECTION = 'sqlite://db.sqlite3'
+CONNECTION = f'postgres://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}'
 
 def run():
         """
@@ -13,25 +16,27 @@ def run():
         it takes a lot of time to create it. If you're trying
         to extend the matrix with new rows (users) or columns (items)
         the util method csr_append() is used.
-        
-        Returns:
-            X: sparse matrix
-            user_mapper: dict that maps user id's to user indices
-            user_inv_mapper: dict that maps user indices to user id's
-            movie_mapper: dict that maps movie id's to movie indices
-            movie_inv_mapper: dict that maps movie indices to movie id's
         """
-
+        
         query = str(Rating.objects.all().values("owner_id", "movie_id", "value").query)
         df = cx.read_sql(CONNECTION, query)
 
-        M = MyUser.objects.count()
+        M = User.objects.count()
         N = Movie.objects.count()
 
-        user_index = [i - 1 for i in df['owner_id']]
-        item_index = [i - 1 for i in df['movie_id']]
+        user_index = df['owner_id'] - 1
+        item_index = df['movie_id'] - 1
 
-        X = csr_matrix((df["value"], (user_index,item_index)), shape=(M,N), dtype=np.int8)
+        X = coo_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.int8)
+        X = X.tocsr()
+
+        knn_model = implicit.nearest_neighbours.CosineRecommender()
+        als_model = implicit.als.AlternatingLeastSquares(factors=50)
+
+        knn_model.fit(X)
+        als_model.fit(X)
 
         save_npz("data/X.npz", X)
+        knn_model.save('data/knn_model')
+        als_model.save('data/als_model')
         

@@ -19,7 +19,7 @@
                     <p class="mb-2">{{ movie.title }}</p>
                     <i class="bi bi-star-fill fst-normal"> 
                         {% if movie.ratings_average %}
-                        {{ movie.ratings_average }}
+                        {{ movie.ratings_average|floatformat:1 }}
                         {% else %}
                         Not rated
                         {% endif %}

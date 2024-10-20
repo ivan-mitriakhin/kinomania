@@ -2,8 +2,9 @@ import pandas as pd
 from faker import Faker
 
 from django.contrib.auth.models import User
+from django.db.models import signals
 
-from movies.models import Rating, Movie
+from movies.models import Rating, Movie, update_X
 
 """
 A script to populate database with real user ratings
@@ -16,6 +17,7 @@ def username_exists(username):
     return User.objects.filter(username=username).exists()
 
 def run():
+    signals.post_save.disconnect(receiver=update_X, sender=User)
     ratings = pd.read_csv("ratings.csv")
     user_ids = ratings.userId.unique()
     users_cnt = len(User.objects.all())
