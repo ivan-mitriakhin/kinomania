@@ -6,12 +6,10 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 import implicit
-import pandas as pd
-import numpy as np
 import scipy.sparse as sp
-from sklearn.neighbors import NearestNeighbors
 
-from utils.csr_utils import load_X, csr_append
+from movies.apps import MoviesConfig
+from utils.csr_utils import csr_append
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -104,11 +102,7 @@ class Movie(models.Model):
         self.save(update_fields=['bayesian_average', 'ratings_average', 'ratings_count'])
 
     def similar_movies(self, N=16):
-        X = load_X()
-
-        model = implicit.nearest_neighbours.CosineRecommender()
-        model.fit(X, show_progress=False)
-        items_scores = model.similar_items(itemid=self.pk-1, N=N)
+        items_scores = MoviesConfig.knn_model.similar_items(itemid=self.pk-1, N=N)
         similar_items = items_scores[0][1:] # Not including the object itself
         
         result = [Movie.objects.get(id=i+1) for i in similar_items]
@@ -128,8 +122,7 @@ class Rating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def csr_update(self, save=True):
-        X = load_X()
+    def csr_update(self, X, knn_model, als_model, save=True):
         i = self.owner.pk - 1
         j = self.movie.pk - 1
         if save:
@@ -138,25 +131,22 @@ class Rating(models.Model):
             X[i, j] = 0
             X.eliminate_zeros()
 
-        knn_model = implicit.nearest_neighbours.CosineRecommender.load("data/knn_model")
-        als_model = implicit.cpu.als.AlternatingLeastSquares.load("data/als_model")
         knn_model.fit(X)
         als_model.partial_fit_users([i], X[i])
         als_model.partial_fit_items([j], X.T[j])
         knn_model.save('data/knn_model')
         als_model.save('data/als_model')
-
         sp.save_npz("data/X.npz", X)
 
     def save(self, **kwargs):
         super().save(**kwargs)
         self.movie.update_ratings_info()
-        self.csr_update(save=True)
+        self.csr_update(MoviesConfig.X, MoviesConfig.knn_model, MoviesConfig.als_model, save=True)
 
     def delete(self, **kwargs):
         super().delete(**kwargs)
         self.movie.update_ratings_info()
-        self.csr_update(save=False)
+        self.csr_update(MoviesConfig.X, MoviesConfig.knn_model, MoviesConfig.als_model, save=False)
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
@@ -176,15 +166,12 @@ class Recommend(models.Model):
         
         model = None
         if self.recommender_type == self.RecommenderType.PERSONALIZED_1:
-            model = implicit.nearest_neighbours.CosineRecommender()
+            model = MoviesConfig.knn_model
         elif self.recommender_type == self.RecommenderType.PERSONALIZED_2:
-            model = implicit.cpu.als.AlternatingLeastSquares(factors=50)
+            model = MoviesConfig.als_model
 
-        X = load_X()
-        model.fit(X, show_progress=False)
-        X.dtype = np.float32
         id = self.user.pk - 1
-        items_scores = model.recommend(id, X[id], N=N)
+        items_scores = model.recommend(id, MoviesConfig.X[id], N=N)
         recommended_items = items_scores[0]
 
         result = [Movie.objects.get(id=i+1) for i in recommended_items]
@@ -200,9 +187,9 @@ def create_recommend(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def update_X(sender, instance, created, **kwargs):
     if created:
-        csr_append(axis=0)
+        csr_append(MoviesConfig.X, axis=0)
 
 @receiver(post_save, sender=Movie)
 def update_X(sender, instance, created, **kwargs):
     if created:
-        csr_append(axis=1)
+        csr_append(MoviesConfig.X, axis=1)

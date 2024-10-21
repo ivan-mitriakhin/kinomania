@@ -69,21 +69,58 @@
             </div>
             {% if user.is_authenticated %}
             <ul class="navbar-nav mb-2 mb-lg-0">
-              <li class="nav-item dropstart">
+              <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="bi bi-star fst-normal"> {{ user.ratings.count }}</i>
                 </a>
                 <form action={% url 'recommender_select' %} method="post" onsubmit="openLoader()">
                     {% csrf_token %}
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu dropdown-menu-lg-end">
+                      <li><h6 class="dropdown-header fs-5">Ratings and recommendations</h6></li>
+                      <li><h6 class="dropdown-header text-wrap text-body fw-normal">You have rated {{ user.ratings.count }} movies. By rating more movies you improve your profile and recommendations.</h6></li>
+                      {% if user.recommend.recommender_type == 1 %}
+                      <li>
+                        <h6 class="dropdown-header text-wrap text-body fw-normal">
+                          You are using the non-personalized recommender. 
+                          This recommender is not personalized to your ratings, but instead recommends the top-rated content.
+                        </h6>
+                      </li>
+                      {% if user.ratings.count < 15 %}
+                      <li>
+                        <h6 class="dropdown-header text-wrap text-body">
+                          In order to unlock other recommenders rate at least 15 movies.
+                        </h6>
+                      </li>
+                      {% endif %}
+                      {% endif %}
+                      {% if user.recommend.recommender_type == 2 %}
+                      <li>
+                        <h6 class="dropdown-header text-wrap text-body">
+                          You are using the personalized 1 recommender. 
+                          This recommender uses your ratings to determine which movies to recommend. 
+                          It works by finding the similarities and differences among all movies in the system based on all users' ratings (item-item collaborative filtering).
+                        </h6>
+                      </li>
+                      {% endif %}
+                      {% if user.recommend.recommender_type == 3 %}
+                      <li>
+                        <h6 class="dropdown-header text-wrap text-body">
+                          You are using the personalized 2 recommender. 
+                          This recommender uses your ratings to determine which movies to recommend. 
+                          It works by turning all users' ratings data into a small set of factors that capture the essential preference aspects of a movie or a user (alternating least squares).
+                        </h6>
+                      </li>
+                      {% endif %}
+                      <li><hr class="dropdown-divider"></li>
+                      <li><h6 class="dropdown-header fs-5">Change your recommender</h6></li>
                       <li class="dropdown-item {% if user.recommend.recommender_type == 1 %}active{% endif %}">
-                        <button class="dropdown-item" name="recommender_type" value="1" type="submit">Non-personalized</button>
+                        <button class="dropdown-item {% if user.recommend.recommender_type == 1 %}active{% endif %}" name="recommender_type" value="1" type="submit">Non-personalized</button>
                       </li>
                       <li class="dropdown-item {% if user.recommend.recommender_type == 2 %}active{% endif %}">
-                        <button class="dropdown-item {% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="2" type="submit">Personalized 1</button>
+                        <button class="dropdown-item {% if user.recommend.recommender_type == 2 %}active{% endif %}{% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="2" type="submit">Personalized 1</button>
                       </li>
                       <li class="dropdown-item {% if user.recommend.recommender_type == 3 %}active{% endif %}">
-                        <button class="dropdown-item {% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="3" type="submit">Personalized 2</button>
+                        <button class="dropdown-item {% if user.recommend.recommender_type == 3 %}active{% endif %}{% if user.ratings.count <= 15 %}disabled{% endif %}" name="recommender_type" value="3" type="submit">Personalized 2</button>
                       </li>
                     </ul>
                 </form>

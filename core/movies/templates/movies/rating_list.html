@@ -24,7 +24,7 @@
 <div class="row row-cols-auto g-3">
     {% for rating in page_obj %}
     <div class="col">
-      <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
+      <div class="card shadow-sm h-100 rounded-0 overflow-hidden" style="width: 148px;">
         <img
             loading="lazy" 
         {% if rating.movie.poster_path %}

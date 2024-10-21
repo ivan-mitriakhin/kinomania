@@ -1,8 +1,8 @@
-{% if head %}<p class="fs-5 fw-bold mt-2 mb-1"><a class="link-dark" href={{ href }}>{{ head }}</a></p>{% endif %}
+{% if head %}<p class="fs-5 fw-bold mt-2 mb-1"><a class="link-dark link-opacity-10" href={{ href }}>{{ head }}</a></p>{% endif %}
 <div class="row row-cols-auto g-3">
     {% for movie in queryset %}
     <div class="col">
-        <div class="card h-100 rounded-0 overflow-hidden" style="width: 148px;">
+        <div class="card shadow-sm h-100 rounded-0 overflow-hidden" style="width: 148px;">
             <img
                 loading="lazy" 
             {% if movie.poster_path %}

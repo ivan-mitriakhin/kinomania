@@ -27,7 +27,7 @@ def run():
         user_index = df['owner_id'] - 1
         item_index = df['movie_id'] - 1
 
-        X = coo_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.int8)
+        X = coo_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.float32)
         X = X.tocsr()
 
         knn_model = implicit.nearest_neighbours.CosineRecommender()

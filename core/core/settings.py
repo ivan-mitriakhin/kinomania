@@ -150,3 +150,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGOUT_REDIRECT_URL = 'movie_list'
 LOGIN_REDIRECT_URL = 'movie_list'
 LOGIN_URL = '/profile/login'
+
+# Celery settings
+
+CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
