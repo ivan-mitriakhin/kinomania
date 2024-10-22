@@ -146,7 +146,7 @@ class Recommend(models.Model):
         if self.recommender_type == self.RecommenderType.NON_PERSONALIZED:
             return Movie.objects.order_by(models.F('bayesian_average').desc(nulls_last=True))[:N]
         
-        X = json_to_csr(r.get('X'))
+        X = pickle.loads(r.get('X'))
         model = None
         if self.recommender_type == self.RecommenderType.PERSONALIZED_1:
             model = pickle.loads(r.get('knn_model'))

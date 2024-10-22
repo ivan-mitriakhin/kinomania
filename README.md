@@ -1,1 +1,3 @@
-# kinorec
+# **Kinomania**: A Movie Recommender System
+
+...

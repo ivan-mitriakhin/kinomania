@@ -1,27 +1,21 @@
 from celery import shared_task
 from celery.signals import worker_init
 import pickle
+import numpy as np
 
 from movies.apps import MoviesConfig
 from utils import csr_utils
-
-"""
-TODO: 
-1. Move saving X, knn_model, als_model to celery beat task that runs every one minute.
-2. csr_append (Also think on moving save_npz out of csr_utils).
-3. Probably the app needs to run create_x every time it starts cuz if the server fails some info might be lost.
-"""
 
 r = MoviesConfig.redis_client
 X, knn_model, als_model = None, None, None
 
 @worker_init.connect
 def at_start(sender, **kwargs):
-    X, knn_model, als_model = csr_utils.create_X_and_models()
-    json_X = csr_utils.jsonify(X)
+    X, knn_model, als_model = csr_utils.create_csr_and_models()
+    pkl_X = pickle.dumps(X)
     pkl_knn = pickle.dumps(knn_model)
     pkl_als = pickle.dumps(als_model)
-    r.set('X', json_X)
+    r.set('X', pkl_X)
     r.set('knn_model', pkl_knn)
     r.set('als_model', pkl_als)
 
@@ -35,9 +29,9 @@ def csr_append_task(axis=0):
         X.indptr = np.hstack((X.indptr,X.indptr[-1]))
     else:
         X._shape = (X.shape[0], X.shape[1] + 1)
-    
-    json_X = csr_utils.jsonify(X)
-    r.set('X', json_X)
+
+    pkl_X = pickle.dumps(X)
+    r.set('X', pkl_X)
 
 @shared_task()
 def csr_update_task(owner_pk, movie_pk, value, save=True):
@@ -54,10 +48,10 @@ def csr_update_task(owner_pk, movie_pk, value, save=True):
     als_model.partial_fit_users([i], X[i])
     als_model.partial_fit_items([j], X.T[j])
 
-    json_X = csr_utils.jsonify(X)
+    pkl_X = pickle.dumps(X)
     pkl_knn = pickle.dumps(knn_model)
     pkl_als = pickle.dumps(als_model)
-    r.set('X', json_X)
+    r.set('X', pkl_X)
     r.set('knn_model', pkl_knn)
     r.set('als_model', pkl_als)
 

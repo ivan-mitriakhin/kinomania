@@ -1,5 +1,4 @@
 import os
-import orjson as json
 import connectorx as cx
 import numpy as np
 import scipy.sparse as sp
@@ -31,21 +30,3 @@ def create_csr_and_models():
     als_model.fit(X)
 
     return X, knn_model, als_model
-
-def jsonify(X):
-    json_X = json.dumps(
-        {
-            "data": X.data, 
-            "indices": X.indices, 
-            "indptr": X.indptr,
-            "shape": X.shape,
-        }
-    )
-    return json_X
-
-def json_to_csr(json_str):
-    obj = json.loads(json_str)
-    return sp.csr_matrix(
-        (obj.get("data"), obj.get("indices"), obj.get("indptr")),
-        shape=obj.get("shape")
-    )
