@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-from django.urls import reverse_lazy
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -150,6 +149,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGOUT_REDIRECT_URL = 'movie_list'
 LOGIN_REDIRECT_URL = 'movie_list'
 LOGIN_URL = '/profile/login'
+
+# Cache
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://localhost:6379",
+    }
+}
 
 # Celery settings
 

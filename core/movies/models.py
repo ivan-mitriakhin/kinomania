@@ -2,14 +2,13 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
-import implicit
-import scipy.sparse as sp
+import pickle
 
 from movies.apps import MoviesConfig
-from utils.csr_utils import csr_append
+from utils.csr_utils import json_to_csr
+
+r = MoviesConfig.redis_client
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -102,7 +101,8 @@ class Movie(models.Model):
         self.save(update_fields=['bayesian_average', 'ratings_average', 'ratings_count'])
 
     def similar_movies(self, N=16):
-        items_scores = MoviesConfig.knn_model.similar_items(itemid=self.pk-1, N=N)
+        knn_model = pickle.loads(r.get('knn_model'))
+        items_scores = knn_model.similar_items(itemid=self.pk-1, N=N)
         similar_items = items_scores[0][1:] # Not including the object itself
         
         result = [Movie.objects.get(id=i+1) for i in similar_items]
@@ -122,31 +122,13 @@ class Rating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def csr_update(self, X, knn_model, als_model, save=True):
-        i = self.owner.pk - 1
-        j = self.movie.pk - 1
-        if save:
-            X[i, j] = self.value
-        else:
-            X[i, j] = 0
-            X.eliminate_zeros()
-
-        knn_model.fit(X)
-        als_model.partial_fit_users([i], X[i])
-        als_model.partial_fit_items([j], X.T[j])
-        knn_model.save('data/knn_model')
-        als_model.save('data/als_model')
-        sp.save_npz("data/X.npz", X)
-
     def save(self, **kwargs):
         super().save(**kwargs)
         self.movie.update_ratings_info()
-        self.csr_update(MoviesConfig.X, MoviesConfig.knn_model, MoviesConfig.als_model, save=True)
 
     def delete(self, **kwargs):
         super().delete(**kwargs)
         self.movie.update_ratings_info()
-        self.csr_update(MoviesConfig.X, MoviesConfig.knn_model, MoviesConfig.als_model, save=False)
 
     def __str__(self):
         return f"{self.owner.username} : {self.value / 2}"
@@ -164,32 +146,16 @@ class Recommend(models.Model):
         if self.recommender_type == self.RecommenderType.NON_PERSONALIZED:
             return Movie.objects.order_by(models.F('bayesian_average').desc(nulls_last=True))[:N]
         
+        X = json_to_csr(r.get('X'))
         model = None
         if self.recommender_type == self.RecommenderType.PERSONALIZED_1:
-            model = MoviesConfig.knn_model
+            model = pickle.loads(r.get('knn_model'))
         elif self.recommender_type == self.RecommenderType.PERSONALIZED_2:
-            model = MoviesConfig.als_model
+            model = pickle.loads(r.get('als_model'))
 
         id = self.user.pk - 1
-        items_scores = model.recommend(id, MoviesConfig.X[id], N=N)
+        items_scores = model.recommend(id, X[id], N=N)
         recommended_items = items_scores[0]
 
         result = [Movie.objects.get(id=i+1) for i in recommended_items]
         return result
-
-@receiver(post_save, sender=User)
-def create_recommend(sender, instance, created, **kwargs):
-    if created:
-        r = Recommend(user=instance,
-                      recommender_type=instance.RecommenderType.NON_PERSONALIZED)
-        r.save()
-
-@receiver(post_save, sender=User)
-def update_X(sender, instance, created, **kwargs):
-    if created:
-        csr_append(MoviesConfig.X, axis=0)
-
-@receiver(post_save, sender=Movie)
-def update_X(sender, instance, created, **kwargs):
-    if created:
-        csr_append(MoviesConfig.X, axis=1)
