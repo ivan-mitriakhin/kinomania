@@ -154,7 +154,10 @@ class RatingAddView(LoginRequiredMixin, View):
         value = int(request.POST['rating'])
         movie = Movie.objects.get(pk=pk)
         owner = request.user
-        r, _ = Rating.objects.get_or_create(movie=movie, owner=owner)
+        try:
+            r = Rating.objects.get(movie=movie, owner=owner)
+        except Rating.DoesNotExist:
+            r = Rating(movie=movie, owner=owner)
         r.value = value
         r.save()
         return redirect(reverse('movie_detail', args=[pk]))

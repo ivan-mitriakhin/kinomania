@@ -1,10 +1,11 @@
 from django.core.cache import cache
 
 from celery import shared_task
-from celery.signals import worker_init
+from celery.signals import celeryd_init
 from contextlib import contextmanager
 import pickle
 import time
+import socket
 import numpy as np
 
 from utils import csr_utils
@@ -25,7 +26,7 @@ def cache_lock(lock_id, oid):
             # also don't release the lock if we didn't acquire it
             cache.delete(lock_id)
 
-@worker_init.connect
+@celeryd_init.connect(sender=f"worker1@{socket.gethostname()}")
 def at_start(sender, **kwargs):
     X, knn_model, als_model = csr_utils.create_csr_and_models()
     pkl_X = pickle.dumps(X)
