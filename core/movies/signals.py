@@ -27,14 +27,15 @@ def X_insert_value(sender, instance, created, **kwargs):
     csr_update_task.delay_on_commit(
         instance.owner.pk, 
         instance.movie.pk,
-        instance.value
+        instance.value,
+        save=True
     )
 
 @receiver(post_delete, sender=Rating)
-def X_delete_value(sender, instance, created, **kwargs):
+def X_delete_value(sender, instance, **kwargs):
     csr_update_task.delay_on_commit(
-            instance.owner.pk, 
-            instance.movie.pk,
-            instance.value,
-            save=False
-        )
+        instance.owner.pk, 
+        instance.movie.pk,
+        instance.value,
+        save=False
+    )

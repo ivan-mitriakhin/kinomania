@@ -2,13 +2,9 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
+from django.core.cache import cache
 
 import pickle
-
-from movies.apps import MoviesConfig
-from utils.csr_utils import json_to_csr
-
-r = MoviesConfig.redis_client
 
 PRODUCTION_STATUSES = { status.upper():status for status in [
         "Announced",
@@ -101,7 +97,7 @@ class Movie(models.Model):
         self.save(update_fields=['bayesian_average', 'ratings_average', 'ratings_count'])
 
     def similar_movies(self, N=16):
-        knn_model = pickle.loads(r.get('knn_model'))
+        knn_model = pickle.loads(cache.get('knn_model'))
         items_scores = knn_model.similar_items(itemid=self.pk-1, N=N)
         similar_items = items_scores[0][1:] # Not including the object itself
         
@@ -142,16 +138,18 @@ class Recommend(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     recommender_type = models.PositiveSmallIntegerField(choices=RecommenderType, default=RecommenderType.NON_PERSONALIZED)
 
-    def recommended_movies(self, N=1000):
+    def recommended_movies(self, N=None):
+        if not N:
+            N = Movie.objects.count()
         if self.recommender_type == self.RecommenderType.NON_PERSONALIZED:
             return Movie.objects.order_by(models.F('bayesian_average').desc(nulls_last=True))[:N]
         
-        X = pickle.loads(r.get('X'))
+        X = pickle.loads(cache.get('X'))
         model = None
         if self.recommender_type == self.RecommenderType.PERSONALIZED_1:
-            model = pickle.loads(r.get('knn_model'))
+            model = pickle.loads(cache.get('knn_model'))
         elif self.recommender_type == self.RecommenderType.PERSONALIZED_2:
-            model = pickle.loads(r.get('als_model'))
+            model = pickle.loads(cache.get('als_model'))
 
         id = self.user.pk - 1
         items_scores = model.recommend(id, X[id], N=N)

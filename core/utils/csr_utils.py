@@ -20,8 +20,7 @@ def create_csr_and_models():
     user_index = df['owner_id'] - 1
     item_index = df['movie_id'] - 1
 
-    X = sp.coo_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.float32)
-    X = X.tocsr()
+    X = sp.csr_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.float32)
 
     knn_model = implicit.nearest_neighbours.CosineRecommender()
     als_model = implicit.als.AlternatingLeastSquares(factors=50)
