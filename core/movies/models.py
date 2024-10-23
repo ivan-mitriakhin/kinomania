@@ -138,9 +138,7 @@ class Recommend(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     recommender_type = models.PositiveSmallIntegerField(choices=RecommenderType, default=RecommenderType.NON_PERSONALIZED)
 
-    def recommended_movies(self, N=None):
-        if not N:
-            N = Movie.objects.count()
+    def recommended_movies(self, N=10000):
         if self.recommender_type == self.RecommenderType.NON_PERSONALIZED:
             return Movie.objects.order_by(models.F('bayesian_average').desc(nulls_last=True))[:N]
         
@@ -153,7 +151,9 @@ class Recommend(models.Model):
 
         id = self.user.pk - 1
         items_scores = model.recommend(id, X[id], N=N)
-        recommended_items = items_scores[0]
+        recommended_items = items_scores[0] + 1
 
-        result = [Movie.objects.get(id=i+1) for i in recommended_items]
+        movie_qs = Movie.objects.filter(id__in=recommended_items)
+        id_movie = dict([(obj.id, obj) for obj in movie_qs])
+        result = [id_movie[id] for id in recommended_items]
         return result

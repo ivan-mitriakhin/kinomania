@@ -9,7 +9,7 @@ from movies.tasks import csr_append_task, csr_update_task
 def create_recommend(sender, instance, created, **kwargs):
     if created:
         r = Recommend(user=instance,
-                      recommender_type=instance.RecommenderType.NON_PERSONALIZED)
+                      recommender_type=Recommend.RecommenderType.NON_PERSONALIZED)
         r.save()
 
 @receiver(post_save, sender=User)

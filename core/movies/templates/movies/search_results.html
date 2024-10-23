@@ -1,8 +1,22 @@
-<ul class="list-group">
-{% for movie in movies|slice:":5" %}
-<li class="list-group-item"><a href={% url 'movie_detail' movie.id %} class="text-decoration-none">{{ movie.title }}</a></li>
-{% endfor %}
-{% if movies.count > 5 %}
-<li class="list-group-item"><button class="btn btn-outline-success" type="submit">More</button></li>
-{% endif %}
+<ul class="list-group rounded-0">
+    {% for movie in movies|slice:":5" %}
+    <li class="list-group-item d-flex align-items-center">
+        <img
+            loading="lazy" 
+        {% if movie.poster_path %}
+            src="https://image.tmdb.org/t/p/w45{{ movie.poster_path }}"
+        {% endif %}
+            class="card-img-top rounded-0 ms-0 me-2"
+            style="width: 25px; height: 30px;"
+        />
+        <a href={% url 'movie_detail' movie.id %} 
+           class="stretched-link link-dark link-underline link-underline-opacity-0 link-underline-opacity-100-hover">
+           {{ movie.title|truncatechars:20 }}
+        </a>
+        <span class="badge text-bg-dark rounded-pill ms-2">{{ movie.ratings_average|floatformat:1 }}</span>
+    </li>
+    {% endfor %}
+    {% if movies.count > 5 %}
+    <li class="list-group-item"><button class="btn btn-dark btn-sm" type="submit">More</button></li>
+    {% endif %}
 </ul>
