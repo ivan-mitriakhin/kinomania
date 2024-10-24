@@ -36,9 +36,9 @@ def at_start(sender, **kwargs):
     cache.set('knn_model', pkl_knn, timeout=None)
     cache.set('als_model', pkl_als, timeout=None)
 
-@shared_task(bind=True, name="csr_append")
+@shared_task(bind=True)
 def csr_append_task(self, axis):
-    lock_id = self.name
+    lock_id = 'csr_lock'
 
     with cache_lock(lock_id, self.app.oid) as acquired:
         if acquired:
@@ -59,9 +59,9 @@ def csr_append_task(self, axis):
         
     raise self.retry(countdown=10)
 
-@shared_task(bind=True, name="csr_update")
+@shared_task(bind=True)
 def csr_update_task(self, owner_pk, movie_pk, value, save):
-    lock_id = self.name
+    lock_id = 'csr_lock'
 
     with cache_lock(lock_id, self.app.oid) as acquired:
         if acquired:
