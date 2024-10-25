@@ -1,0 +1,51 @@
+version: '2'
+
+services:
+    nginx:
+        restart: always
+        image: nginx:1.27.2
+        ports:
+            - 80:80
+        volumes:
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - static_volume:/app/core/static
+    server:
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/core/Dockerfile
+        entrypoint: /app/docker/core/server-entrypoint.sh
+        volumes:
+            - static_volume:/app/core/static
+        expose:
+            - 8000     
+        env_file: "./core/.env"
+    worker:
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/core/Dockerfile
+        entrypoint: /app/docker/core/worker-entrypoint.sh
+        volumes:
+            - static_volume:/app/core/static
+        env_file: "./core/.env"
+        depends_on:
+            - server
+            - redis
+    redis:
+        restart: unless-stopped
+        image: redis/redis-stack-server
+        expose:
+            - 6379
+    db:
+        image: postgres:17.0
+        restart: unless-stopped
+        volumes:
+            - postgres_data:/var/lib/postgresql/data/
+        env_file: "./core/.env"
+        expose:
+            - 5432
+    
+volumes:
+    static_volume: {}
+    postgres_data: {}

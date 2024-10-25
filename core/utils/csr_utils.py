@@ -9,7 +9,7 @@ from movies import models
 
 def create_csr_and_models():
     query = str(models.Rating.objects.all().values("owner_id", "movie_id", "value").query)
-    connection = f'postgres://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}'
+    connection = f'postgres://{os.getenv("POSTGRES_USER")}:{os.getenv("POSTGRES_PASSWORD")}@{os.getenv("POSTGRES_HOST")}:{os.getenv("POSTGRES_PORT")}/{os.getenv("POSTGRES_NAME")}'
     df = cx.read_sql(connection, query)
 
     M = User.objects.count()
@@ -21,7 +21,7 @@ def create_csr_and_models():
     X = sp.csr_matrix((df['value'], (user_index,item_index)), shape=(M,N), dtype=np.float32)
 
     knn_model = implicit.nearest_neighbours.CosineRecommender(K=15)
-    als_model = implicit.als.AlternatingLeastSquares(factors=100)
+    als_model = implicit.cpu.als.AlternatingLeastSquares(factors=100)
 
     knn_model.fit(X)
     als_model.fit(X)

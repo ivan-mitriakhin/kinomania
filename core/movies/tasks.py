@@ -77,7 +77,7 @@ def csr_update_task(self, owner_pk, movie_pk, value, save):
                 X[i, j] = 0
                 X.eliminate_zeros()
 
-            knn_model.fit(X, show_progress=False)
+            knn_model.fit(X, False)
             als_model.partial_fit_users([i], X[i])
             als_model.partial_fit_items([j], X.T[j])
 

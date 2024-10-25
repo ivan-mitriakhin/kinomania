@@ -5,7 +5,8 @@ import os
 
 from django.db.models import signals
 
-from movies.models import Language, Genre, Company, Country, Person, Movie, update_X
+from movies.models import Language, Genre, Company, Country, Person, Movie
+from movies.signals import X_append_col
 
 def strip_accents(text):
     return ''.join(char for char in
@@ -50,7 +51,7 @@ def get_default_if_none(data, field, model):
     return value if value else model._meta.get_field(field).get_default()
 
 def run():
-    signals.post_save.disconnect(receiver=update_X, sender=Movie)
+    signals.post_save.disconnect(receiver=X_append_col, sender=Movie)
 
     movies = pd.read_csv("movies.csv")
 
