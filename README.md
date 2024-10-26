@@ -49,4 +49,4 @@ docker-compose down
 
 docker-compose up
 ```
-Now, it is all ready at [localhost](localhost).
+Now, it is all ready at [localhost](http://localhost).
