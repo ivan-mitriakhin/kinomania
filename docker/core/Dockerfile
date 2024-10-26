@@ -2,7 +2,7 @@ FROM python:3.10.6
 
 RUN apt-get update -y && \
     apt-get install -y netcat
-
+    
 WORKDIR /app
 
 RUN pip install --upgrade pip

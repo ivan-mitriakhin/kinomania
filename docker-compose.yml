@@ -38,8 +38,10 @@ services:
         expose:
             - 6379
     db:
-        image: postgres:17.0
         restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/core/db.Dockerfile
         volumes:
             - postgres_data:/var/lib/postgresql/data/
         env_file: "./core/.env"

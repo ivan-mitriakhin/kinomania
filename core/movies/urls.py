@@ -1,8 +1,10 @@
 from django.urls import path, include
+from django.views.generic.base import RedirectView
 
 from movies import views
 
 urlpatterns = [
+    path('', RedirectView.as_view(pattern_name="home")),
     path('home', views.HomeView.as_view(), name="home"),
     path('sign-up', views.UserCreateView.as_view(), name="sign_up"),
     path('<int:pk>', views.MovieDetailView.as_view(), name="movie_detail"),
